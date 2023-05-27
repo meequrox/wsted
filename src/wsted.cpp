@@ -92,14 +92,23 @@ void wsted::loadUi() {
     m_comboBoxServers->addItem("super.bx");
 
     // Connect
+    auto userNameValidator =
+        new QRegularExpressionValidator(QRegularExpression("[a-zA-Z0-9_-]{1,16}"), this);
+    auto roomIdValidator =
+        new QRegularExpressionValidator(QRegularExpression("[a-zA-Z0-9]{1,10}"), this);
+
     m_lineUserName->setPlaceholderText("Username");
     m_lineUserName->setText("");
     m_lineUserName->setAlignment(Qt::AlignHCenter);
     m_lineUserName->setMaxLength(16);
+    m_lineUserName->setValidator(userNameValidator);
+
     m_lineRoomId->setPlaceholderText("Room ID");
     m_lineRoomId->setText("");
     m_lineRoomId->setAlignment(Qt::AlignHCenter);
     m_lineRoomId->setMaxLength(10);
+    m_lineRoomId->setValidator(roomIdValidator);
+
     m_pushButtonConnect->setText("Connect");
 }
 
@@ -110,7 +119,9 @@ wsted::~wsted() {
     delete m_menuHelp;
     delete m_menubar;
     delete m_comboBoxServers;
+    delete m_lineUserName->validator();
     delete m_lineUserName;
+    delete m_lineRoomId->validator();
     delete m_lineRoomId;
     delete m_pushButtonConnect;
 }
