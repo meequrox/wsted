@@ -51,6 +51,8 @@ set_target_properties(wsted PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+target_compile_options(wsted PRIVATE -Wall -Wextra -Wpedantic)
+
 install(TARGETS wsted
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
