@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QMessageBox>
 #include <QScreen>
 
 #define LOG_CALL() qDebug().nospace() << __FUNCTION__ << "() call"
@@ -75,8 +76,15 @@ void wsted::loadUi() {
     this->setWindowTitle("wsted");
 
     // Menubar
-    m_actionAbout->setText("About");
     m_menuHelp->setTitle("Help");
+    m_actionAbout->setText("About");
+
+    connect(m_actionAbout, &QAction::triggered, [=]() {
+        QString text =
+            "wsted allows users to quickly and easily share files within a room, as well as chat in "
+            "real time.";
+        QMessageBox::information(this, "About", text, QMessageBox::Close, QMessageBox::Close);
+    });
 
     // Servers
     m_comboBoxServers->addItem("127.0.0.1");
