@@ -30,10 +30,8 @@ class wsted : public QWidget {
     QComboBox* m_comboBoxServers;
 
     // Connect
+    QLineEdit* m_lineUserName;
     QLineEdit* m_lineRoomId;
     QPushButton* m_pushButtonConnect;
-
-    // Status
-    QStatusBar* m_statusbar;
 };
 #endif  // WSTED_HPP
