@@ -85,7 +85,7 @@ void wsted::loadUi() {
     connect(m_actionAbout, &QAction::triggered, [=]() {
         LOG_CALL();
 
-        QString text = QString(
+        QString text(
             "wsted allows users to quickly and easily share files within a room, as well as chat in "
             "real time.");
         QMessageBox::information(this, "About", text, QMessageBox::Close, QMessageBox::Close);
