@@ -85,6 +85,7 @@ void wsted::ui_loadContents() {
     this->connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
 
     // Servers
+    m_comboBoxServers->setStyleSheet("QComboBox{color:white;border:1px solid white;border-radius:1px}");
     m_comboBoxServers->addItem("127.0.0.1:7999");
     m_comboBoxServers->addItem("anotherserv.io");
     m_comboBoxServers->addItem("super.bx:8814");
@@ -93,6 +94,7 @@ void wsted::ui_loadContents() {
     auto userNameValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9_-]{1,16}"), this);
     auto roomIdValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9]{1,10}"), this);
 
+    m_lineUserName->setStyleSheet("QLineEdit{color:white;border:1px solid white;border-radius:6px}");
     m_lineUserName->setPlaceholderText("Username");
     m_lineUserName->setText("");
     m_lineUserName->setAlignment(Qt::AlignHCenter);
@@ -100,6 +102,7 @@ void wsted::ui_loadContents() {
     m_lineUserName->setValidator(userNameValidator);
     m_lineUserName->setClearButtonEnabled(true);
 
+    m_lineRoomId->setStyleSheet(m_lineUserName->styleSheet());
     m_lineRoomId->setPlaceholderText("Room ID (can be blank)");
     m_lineRoomId->setText("");
     m_lineRoomId->setAlignment(Qt::AlignHCenter);
@@ -107,6 +110,7 @@ void wsted::ui_loadContents() {
     m_lineRoomId->setValidator(roomIdValidator);
     m_lineRoomId->setClearButtonEnabled(true);
 
+    m_pushButtonConnect->setStyleSheet(m_lineUserName->styleSheet().replace("QLineEdit", "QPushButton"));
     m_pushButtonConnect->setText("Connect");
     this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
 }
