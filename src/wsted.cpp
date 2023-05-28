@@ -85,9 +85,9 @@ void wsted::ui_loadContents() {
     this->connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
 
     // Servers
-    m_comboBoxServers->addItem("127.0.0.1");
+    m_comboBoxServers->addItem("127.0.0.1:7999");
     m_comboBoxServers->addItem("anotherserv.io");
-    m_comboBoxServers->addItem("super.bx");
+    m_comboBoxServers->addItem("super.bx:8814");
 
     // Connect
     auto userNameValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9_-]{1,16}"), this);
@@ -98,12 +98,14 @@ void wsted::ui_loadContents() {
     m_lineUserName->setAlignment(Qt::AlignHCenter);
     m_lineUserName->setMaxLength(16);
     m_lineUserName->setValidator(userNameValidator);
+    m_lineUserName->setClearButtonEnabled(true);
 
     m_lineRoomId->setPlaceholderText("Room ID (can be blank)");
     m_lineRoomId->setText("");
     m_lineRoomId->setAlignment(Qt::AlignHCenter);
     m_lineRoomId->setMaxLength(10);
     m_lineRoomId->setValidator(roomIdValidator);
+    m_lineRoomId->setClearButtonEnabled(true);
 
     m_pushButtonConnect->setText("Connect");
     this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
