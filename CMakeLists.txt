@@ -16,6 +16,7 @@ set(PROJECT_SOURCES
         src/main.cpp
         src/wsted.cpp
         src/wsted.hpp
+        resources/ui.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

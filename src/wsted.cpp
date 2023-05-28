@@ -78,6 +78,7 @@ void wsted::ui_loadContents() {
     LOG_CALL();
 
     this->setWindowTitle("wsted");
+    this->setWindowIcon(QIcon(":/icons/app"));
 
     // Menubar
     m_menuHelp->setTitle("Help");
