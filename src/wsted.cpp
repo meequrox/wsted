@@ -5,10 +5,10 @@
 #include <QMessageBox>
 #include <QScreen>
 
+#define LOG_CALL() qDebug().nospace() << __PRETTY_FUNCTION__ << " call"
+
 typedef QRegularExpression QRegExp;
 typedef QRegularExpressionValidator QRegExpValidator;
-
-#define LOG_CALL() qDebug().nospace() << __PRETTY_FUNCTION__ << " call"
 
 wsted::wsted(QWidget* parent) : QWidget(parent) {
     LOG_CALL();
@@ -21,8 +21,8 @@ wsted::wsted(QWidget* parent) : QWidget(parent) {
     m_lineRoomId = new QLineEdit(this);
     m_pushButtonConnect = new QPushButton(this);
 
-    setupUi();
-    loadUi();
+    ui_setupGeometry();
+    ui_loadContents();
 }
 
 static void increaseCurrentObjectAY(QRect& obj, int extraGap = 0) {
@@ -33,7 +33,7 @@ static void increaseCurrentObjectAY(QRect& obj, int extraGap = 0) {
     obj.setRect(ax, ay + ah + gap + extraGap, aw, ah);
 }
 
-void wsted::setupUi() {
+void wsted::ui_setupGeometry() {
     LOG_CALL();
 
     QRect currentObjectSize;
@@ -74,7 +74,7 @@ void wsted::setupUi() {
                                      currentObjectSize.width(), currentObjectSize.height());
 }
 
-void wsted::loadUi() {
+void wsted::ui_loadContents() {
     LOG_CALL();
 
     this->setWindowTitle("wsted");
@@ -82,14 +82,7 @@ void wsted::loadUi() {
     // Menubar
     m_menuHelp->setTitle("Help");
     m_actionAbout->setText("About");
-    connect(m_actionAbout, &QAction::triggered, [=]() {
-        LOG_CALL();
-
-        QString text(
-            "wsted allows users to quickly and easily share files within a room, as well as chat in "
-            "real time.");
-        QMessageBox::information(this, "About", text, QMessageBox::Close, QMessageBox::Close);
-    });
+    this->connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
 
     // Servers
     m_comboBoxServers->addItem("127.0.0.1");
@@ -113,34 +106,40 @@ void wsted::loadUi() {
     m_lineRoomId->setValidator(roomIdValidator);
 
     m_pushButtonConnect->setText("Connect");
-    connect(m_pushButtonConnect, &QPushButton::clicked, [=]() {
-        LOG_CALL();
+    this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
+}
 
-        QString messageBoxTitle("Connect");
-        QString messageBoxText;
+void wsted::actionAbout_triggered() {
+    LOG_CALL();
 
-        if (m_lineUserName->text().isEmpty()) {
-            messageBoxText = QString("Empty username");
-            qDebug() << messageBoxText;
+    QString text(
+        "wsted allows users to quickly and easily share files within a room, as well as chat in real "
+        "time");
+    QMessageBox::information(this, "About", text, QMessageBox::Close, QMessageBox::Close);
+}
 
-            QMessageBox::warning(this, messageBoxTitle, messageBoxText, QMessageBox::Close,
-                                 QMessageBox::Close);
-            return;
-        }
+void wsted::pushButtonConnect_clicked() {
+    LOG_CALL();
 
-        if (m_lineRoomId->text().isEmpty()) {
-            // TODO: Request new room ID from server
-            qDebug() << "Empty room ID, requesting a new room from the server";
-        }
+    QString messageBoxText;
 
-        // TODO: Connect to server and open room window
-        // This messageBox is temporary to make sure all checks work correctly
-
-        messageBoxText = QString("CHECKS PASSED. CONNECTION IS NOT IMPLEMENTED");
+    if (m_lineUserName->text().isEmpty()) {
+        messageBoxText = QString("Empty username");
         qDebug() << messageBoxText;
-        QMessageBox::warning(this, messageBoxTitle, messageBoxText, QMessageBox::Close,
-                             QMessageBox::Close);
-    });
+
+        QMessageBox::warning(this, "Connect", messageBoxText, QMessageBox::Close, QMessageBox::Close);
+        return;
+    }
+
+    if (m_lineRoomId->text().isEmpty()) {
+        // TODO: Request new room ID from server
+        qDebug() << "Empty room ID, requesting a new room from the server";
+    }
+
+    // TODO: Connect to server and open room window
+    // This messageBox is temporary to make sure all checks work correctly
+    messageBoxText = QString("CHECKS PASSED. CONNECTION IS NOT IMPLEMENTED");
+    QMessageBox::warning(this, "Connect", messageBoxText, QMessageBox::Close, QMessageBox::Close);
 }
 
 wsted::~wsted() {

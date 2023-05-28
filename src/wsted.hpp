@@ -18,8 +18,8 @@ class wsted : public QWidget {
     ~wsted();
 
    private:
-    void setupUi();
-    void loadUi();
+    void ui_setupGeometry();
+    void ui_loadContents();
 
     // Menubar
     QAction* m_actionAbout;
@@ -33,5 +33,9 @@ class wsted : public QWidget {
     QLineEdit* m_lineUserName;
     QLineEdit* m_lineRoomId;
     QPushButton* m_pushButtonConnect;
+
+   public slots:
+    void pushButtonConnect_clicked();
+    void actionAbout_triggered();
 };
 #endif  // WSTED_HPP
