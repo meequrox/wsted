@@ -86,9 +86,17 @@ void wsted::ui_loadContents() {
 
     // Servers
     m_comboBoxServers->setStyleSheet("QComboBox{color:white;border:1px solid white;border-radius:1px}");
+    m_comboBoxServers->setEditable(true);
+    m_comboBoxServers->lineEdit()->setReadOnly(true);
+    m_comboBoxServers->lineEdit()->setAlignment(Qt::AlignCenter);
+
     m_comboBoxServers->addItem("127.0.0.1:7999");
     m_comboBoxServers->addItem("anotherserv.io");
     m_comboBoxServers->addItem("super.bx:8814");
+
+    for (int i = 0; i < m_comboBoxServers->count(); i++) {
+        m_comboBoxServers->setItemData(i, Qt::AlignCenter, Qt::TextAlignmentRole);
+    }
 
     // Connect
     auto userNameValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9_-]{1,16}"), this);
