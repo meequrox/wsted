@@ -1,5 +1,5 @@
-#ifndef WSTED_HPP
-#define WSTED_HPP
+#ifndef LOGINWINDOW_HPP
+#define LOGINWINDOW_HPP
 
 #include <QAction>
 #include <QComboBox>
@@ -10,12 +10,14 @@
 #include <QStatusBar>
 #include <QWidget>
 
-class wsted : public QWidget {
+#include "roomwindow.hpp"
+
+class LoginWindow : public QWidget {
     Q_OBJECT
 
    public:
-    wsted(QWidget* parent = nullptr);
-    ~wsted();
+    LoginWindow(QWidget* parent = nullptr);
+    ~LoginWindow();
 
    private:
     void ui_setupGeometry();
@@ -34,8 +36,11 @@ class wsted : public QWidget {
     QLineEdit* m_lineRoomId;
     QPushButton* m_pushButtonConnect;
 
+    // Next windows
+    RoomWindow* m_widgetRoom;
+
    public slots:
     void pushButtonConnect_clicked();
     void actionAbout_triggered();
 };
-#endif  // WSTED_HPP
+#endif  // LOGINWINDOW_HPP

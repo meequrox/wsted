@@ -1,4 +1,4 @@
-#include "wsted.hpp"
+#include "loginwindow.hpp"
 
 #include <QApplication>
 #include <QDebug>
@@ -10,7 +10,20 @@
 typedef QRegularExpression QRegExp;
 typedef QRegularExpressionValidator QRegExpValidator;
 
-wsted::wsted(QWidget* parent) : QWidget(parent) {
+static QSize getDefaultWindowSize() {
+    LOG_CALL();
+
+    const QSize screenSize = QApplication::primaryScreen()->size();
+    const qreal screenRatio = QApplication::primaryScreen()->devicePixelRatio();
+
+    QSize s;
+    s.setWidth((screenSize.width() * screenRatio) / 5);
+    s.setHeight((screenSize.height() * screenRatio) / 4);
+
+    return s;
+}
+
+LoginWindow::LoginWindow(QWidget* parent) : QWidget(parent) {
     LOG_CALL();
 
     m_actionAbout = new QAction(this);
@@ -20,6 +33,10 @@ wsted::wsted(QWidget* parent) : QWidget(parent) {
     m_lineUserName = new QLineEdit(this);
     m_lineRoomId = new QLineEdit(this);
     m_pushButtonConnect = new QPushButton(this);
+
+    m_widgetRoom = new RoomWindow(nullptr);
+
+    this->setFixedSize(getDefaultWindowSize());
 
     ui_setupGeometry();
     ui_loadContents();
@@ -33,18 +50,11 @@ static void increaseCurrentObjectAY(QRect& obj, int extraGap = 0) {
     obj.setRect(ax, ay + ah + gap + extraGap, aw, ah);
 }
 
-void wsted::ui_setupGeometry() {
+void LoginWindow::ui_setupGeometry() {
     LOG_CALL();
 
     QRect currentObjectSize;
 
-    const QSize screenSize = QApplication::primaryScreen()->size();
-    const qreal screenRatio = QApplication::primaryScreen()->devicePixelRatio();
-    const int windowWidth = (screenSize.width() * screenRatio) / 5;
-    const int windowHeight = (screenSize.height() * screenRatio) / 4;
-
-    // Window
-    this->setFixedSize(windowWidth, windowHeight);
     this->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
     this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
 
@@ -55,7 +65,7 @@ void wsted::ui_setupGeometry() {
     m_menubar->setGeometry(QRect(0, 0, this->geometry().width(), 25));
     m_menubar->addAction(m_menuHelp->menuAction());
 
-    currentObjectSize = QRect(windowWidth / 4, 35, windowWidth / 2, 40);
+    currentObjectSize = QRect(size().width() / 4, 35, size().width() / 2, 40);
     qDebug() << "Object size" << currentObjectSize;
 
     // Servers
@@ -70,11 +80,11 @@ void wsted::ui_setupGeometry() {
     increaseCurrentObjectAY(currentObjectSize);
 
     m_pushButtonConnect->setGeometry(currentObjectSize.x(),
-                                     windowHeight - currentObjectSize.height() - 20,
+                                     size().height() - currentObjectSize.height() - 20,
                                      currentObjectSize.width(), currentObjectSize.height());
 }
 
-void wsted::ui_loadContents() {
+void LoginWindow::ui_loadContents() {
     LOG_CALL();
 
     this->setWindowTitle("wsted");
@@ -86,12 +96,13 @@ void wsted::ui_loadContents() {
     this->connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
 
     // Servers
-    m_comboBoxServers->setStyleSheet("QComboBox{color:white;border:1px solid white;border-radius:1px}");
+    m_comboBoxServers->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_comboBoxServers->setEditable(true);
     m_comboBoxServers->lineEdit()->setReadOnly(true);
     m_comboBoxServers->lineEdit()->setAlignment(Qt::AlignCenter);
 
     m_comboBoxServers->addItem("127.0.0.1:7999");
+    m_comboBoxServers->addItem("0.0.0.0:7999");
     m_comboBoxServers->addItem("anotherserv.io");
     m_comboBoxServers->addItem("super.bx:8814");
 
@@ -103,7 +114,7 @@ void wsted::ui_loadContents() {
     auto userNameValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9_-]{1,16}"), this);
     auto roomIdValidator = new QRegExpValidator(QRegExp("[a-zA-Z0-9]{1,10}"), this);
 
-    m_lineUserName->setStyleSheet("QLineEdit{color:white;border:1px solid white;border-radius:6px}");
+    m_lineUserName->setStyleSheet("color:white;border:1px solid white;border-radius:6px");
     m_lineUserName->setPlaceholderText("Username");
     m_lineUserName->setText("");
     m_lineUserName->setAlignment(Qt::AlignHCenter);
@@ -119,12 +130,16 @@ void wsted::ui_loadContents() {
     m_lineRoomId->setValidator(roomIdValidator);
     m_lineRoomId->setClearButtonEnabled(true);
 
-    m_pushButtonConnect->setStyleSheet(m_lineUserName->styleSheet().replace("QLineEdit", "QPushButton"));
+    m_pushButtonConnect->setStyleSheet(m_lineUserName->styleSheet());
     m_pushButtonConnect->setText("Connect");
     this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
+
+    // Next windows
+    this->connect(m_widgetRoom, SIGNAL(opened()), this, SLOT(hide()));
+    this->connect(m_widgetRoom, SIGNAL(closed()), this, SLOT(show()));
 }
 
-void wsted::actionAbout_triggered() {
+void LoginWindow::actionAbout_triggered() {
     LOG_CALL();
 
     QString text(
@@ -133,7 +148,7 @@ void wsted::actionAbout_triggered() {
     QMessageBox::information(this, "About", text, QMessageBox::Close, QMessageBox::Close);
 }
 
-void wsted::pushButtonConnect_clicked() {
+void LoginWindow::pushButtonConnect_clicked() {
     LOG_CALL();
 
     QString messageBoxText;
@@ -146,18 +161,26 @@ void wsted::pushButtonConnect_clicked() {
         return;
     }
 
-    if (m_lineRoomId->text().isEmpty()) {
-        // TODO: Request new room ID from server
-        qDebug() << "Empty room ID, requesting a new room from the server";
+    qDebug() << "\nShow room window";
+
+    m_widgetRoom->setUserName(m_lineUserName->text());
+    m_widgetRoom->setRoomId(m_lineRoomId->text());
+    m_widgetRoom->setServerAddress(m_comboBoxServers->currentText());
+
+    if (m_widgetRoom->connectToServer() == false) {
+        messageBoxText =
+            QString("Can't join " + m_widgetRoom->getRoomId() + '@' + m_widgetRoom->getServerAddress() +
+                    " as " + m_widgetRoom->getUserName());
+        qDebug() << messageBoxText;
+
+        QMessageBox::warning(this, "Connect", messageBoxText, QMessageBox::Close, QMessageBox::Close);
+        return;
     }
 
-    // TODO: Connect to server and open room window
-    // This messageBox is temporary to make sure all checks work correctly
-    messageBoxText = QString("CHECKS PASSED. CONNECTION IS NOT IMPLEMENTED");
-    QMessageBox::warning(this, "Connect", messageBoxText, QMessageBox::Close, QMessageBox::Close);
+    m_widgetRoom->show();
 }
 
-wsted::~wsted() {
+LoginWindow::~LoginWindow() {
     LOG_CALL();
 
     delete m_actionAbout;
@@ -169,4 +192,5 @@ wsted::~wsted() {
     delete m_lineRoomId->validator();
     delete m_lineRoomId;
     delete m_pushButtonConnect;
+    delete m_widgetRoom;
 }
