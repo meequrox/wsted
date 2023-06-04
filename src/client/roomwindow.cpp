@@ -147,7 +147,8 @@ void RoomWindow::readyRead() {
 
             if (command == "roomid") {
                 this->setRoomId(roomId);
-                updateWindowTitle();
+            } else if (command == "userid") {
+                this->setUserName(data);
             } else if (command == "users" && roomId == this->m_roomId) {
                 QStringList userList = data.split(',');
 

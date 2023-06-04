@@ -95,25 +95,51 @@ void Server::readyRead() {
                     messageToWrite = "/roomid " + roomId + ":" + data + "\n";
                     client->write(messageToWrite.toUtf8());
 
-                    qDebug() << "Send message to user" << userName << ":\n" << messageToWrite;
+                    qDebug() << "Sent message to client" << client->peerAddress().toString() << ":\n"
+                             << messageToWrite;
 
                     QThread::msleep(500);
                     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                         messageToWrite = "Server: " + userName + " has joined.\n";
                         clientInRoom->write(messageToWrite.toUtf8());
 
-                        qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+                        qDebug() << "Sent message to client" << client->peerAddress().toString() << ":\n"
+                                 << messageToWrite;
                     }
                 }
 
-                if (!users.contains(roomId)) users.insert(roomId, userMap());
+                if (!users.contains(roomId)) {
+                    users.insert(roomId, userMap());
+                } else {
+                    bool isUserNameFree = false;
+
+                    while (!isUserNameFree) {
+                        isUserNameFree = true;
+
+                        foreach (const auto& clientUserName, users[roomId]) {
+                            if (clientUserName == userName) {
+                                isUserNameFree = false;
+                                userName += "-1";
+
+                                qDebug() << "Duplicate username" << clientUserName << ", changing to"
+                                         << userName;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 users[roomId][client] = userName;
+
+                messageToWrite = "/userid " + roomId + ':' + userName + "\n";
+                client->write(messageToWrite.toUtf8());
+                qDebug() << "Sent message to user" << userName << ":\n" << messageToWrite;
 
                 for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                     messageToWrite = "Server: " + userName + " has joined.\n";
                     clientInRoom->write(messageToWrite.toUtf8());
 
-                    qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+                    qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
                 }
 
                 sendUserList(roomId);
@@ -126,7 +152,7 @@ void Server::readyRead() {
                     messageToWrite = userName + ":" + data + "\n";
                     clientInRoom->write(messageToWrite.toUtf8());
 
-                    qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+                    qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
                 }
 
                 qDebug() << "User" << userName << "sent new message:\n" << data;
@@ -140,7 +166,7 @@ void Server::readyRead() {
                 messageToWrite = userName + ':' + line + "\n";
                 clientInRoom->write(messageToWrite.toUtf8());
 
-                qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+                qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
             }
 
             qDebug() << "User" << userName << "sent message:\n" << line;
@@ -181,7 +207,7 @@ void Server::disconnected() {
             messageToWrite = "Server: " + userName + " has left.\n";
             clientInRoom->write(messageToWrite.toUtf8());
 
-            qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+            qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
         }
 
         sendUserList(fromRoomId);
