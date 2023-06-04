@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QRegExp>
 #include <QScreen>
+#include <QThread>
 
 #define DEFAULT_PORT 8044
 
@@ -51,16 +52,15 @@ void RoomWindow::ui_setupGeometry() {
 
     m_textMessages->setGeometry(QRect(0, 0, size().width() * 0.75, size().height() * 0.93));
     m_lineMessage->setGeometry(
-        QRect(0, m_textMessages->height(), size().width() * 0.75, size().height() * 0.07));
+        QRect(0, m_textMessages->height(), size().width() * 2 / 3, size().height() * 0.07));
 
     m_listUsers->setGeometry(
         QRect(m_textMessages->width(), 0, m_textMessages->width(), m_textMessages->height()));
 
-    m_pushButtonSend->setGeometry(QRect(m_textMessages->width(), m_textMessages->height(),
+    m_pushButtonSend->setGeometry(QRect(m_lineMessage->width(), m_textMessages->height(),
                                         size().width() * 0.25 / 3, size().height() * 0.07));
-    m_pushButtonDisconnect->setGeometry(QRect(m_pushButtonSend->x() + m_pushButtonSend->width(),
-                                              m_pushButtonSend->y(), size().width() * 0.25 * 2 / 3,
-                                              size().height() * 0.07));
+    m_pushButtonDisconnect->setGeometry(QRect(m_textMessages->width(), m_pushButtonSend->y(),
+                                              size().width() * 0.25, size().height() * 0.07));
 }
 
 void RoomWindow::ui_loadContents() {
@@ -69,24 +69,26 @@ void RoomWindow::ui_loadContents() {
     this->setWindowTitle("Connecting...");
     this->setWindowIcon(QIcon(":/icons/app"));
 
-    m_textMessages->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
+    m_textMessages->setStyleSheet("color:white;border:0px;border-radius:1px");
     m_textMessages->setReadOnly(true);
     m_textMessages->setText("");
 
-    m_lineMessage->setStyleSheet(m_textMessages->styleSheet());
+    m_lineMessage->setStyleSheet(
+        "color:white;border:1px solid white;border-radius:1px;border-right:0px");
     m_lineMessage->setClearButtonEnabled(true);
     m_lineMessage->setText("");
     m_lineMessage->setPlaceholderText("Type here");
 
-    m_listUsers->setStyleSheet(m_textMessages->styleSheet());
+    m_listUsers->setStyleSheet("color:white;border:0px;border-left:1px solid white;border-radius:1px");
     m_listUsers->clear();
 
-    m_pushButtonSend->setStyleSheet(m_textMessages->styleSheet());
+    m_pushButtonSend->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_pushButtonSend->setText("Send");
 
     m_pushButtonDisconnect->setStyleSheet(m_pushButtonSend->styleSheet());
     m_pushButtonDisconnect->setText("Disconnect");
 
+    this->connect(m_pushButtonSend, SIGNAL(clicked()), SLOT(pushButtonSend_clicked()));
     this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
 }
 
@@ -96,8 +98,12 @@ void RoomWindow::pushButtonSend_clicked() {
     QString message = m_lineMessage->text().trimmed();
 
     if (!message.isEmpty()) {
-        m_clientSocket->write(QString("/message " + m_roomId + ":" + message + "\n").toUtf8());
-        message.clear();
+        message = "/message " + m_roomId + ":" + message + "\n";
+
+        m_clientSocket->write(message.toUtf8());
+        m_lineMessage->clear();
+
+        qDebug() << "Sent message to server:\n" << message;
     }
 
     m_lineMessage->setFocus();
@@ -107,6 +113,11 @@ void RoomWindow::pushButtonDisconnect_clicked() {
     LOG_CALL();
 
     m_clientSocket->disconnectFromHost();
+
+    if (m_clientSocket->state() == QAbstractSocket::UnconnectedState ||
+        m_clientSocket->waitForDisconnected(10000)) {
+        qDebug() << "Disconnected!";
+    }
 
     emit closed();
     this->close();
@@ -125,21 +136,26 @@ void RoomWindow::readyRead() {
     QString roomId;
     QString data;
 
-    while (m_clientSocket->canReadLine()) {
+    while (m_clientSocket->bytesAvailable()) {
         line = QString::fromUtf8(m_clientSocket->readLine().trimmed());
+        qDebug() << "Received message from server:\n" << line;
 
         if (regex.indexIn(line) != -1) {
+            command = regex.cap(1);
+            roomId = regex.cap(2);
+            data = regex.cap(3);
+
             if (command == "roomid") {
                 this->setRoomId(roomId);
                 updateWindowTitle();
-            } else if (command == "users") {
+            } else if (command == "users" && roomId == this->m_roomId) {
                 QStringList userList = data.split(',');
 
                 m_listUsers->clear();
                 for (const auto& user : userList) {
                     m_listUsers->addItem(user);
+                    qDebug() << "Add user" << user << "to GUI list";
                 }
-
             } else {
                 qDebug() << "Unknown command from server:\n" << line;
             }
@@ -155,8 +171,12 @@ void RoomWindow::readyRead() {
 
 void RoomWindow::connected() {
     LOG_CALL();
+    QThread::msleep(100);
 
-    m_clientSocket->write(QString("/join " + m_roomId + ':' + m_userName).toUtf8());
+    QString message = "/join " + m_roomId + ':' + m_userName;
+    m_clientSocket->write(message.toUtf8());
+
+    qDebug() << "Sent message to server:\n" << message;
 }
 
 void RoomWindow::resizeEvent(QResizeEvent* ev) {
@@ -178,6 +198,7 @@ bool RoomWindow::connectToServer() {
 
     QString address;
     quint16 port;
+    bool success;
 
     auto idx = m_serverAddress.lastIndexOf(':');
 
@@ -189,13 +210,17 @@ bool RoomWindow::connectToServer() {
         port = DEFAULT_PORT;
     }
 
-    qDebug().nospace() << __FUNCTION__ << ": connect to address " << address << " port " << port;
+    qDebug().noquote() << __FUNCTION__ << ": connect to address" << address << "port" << port;
 
-    m_clientSocket->connectToHost(m_serverAddress, port);
+    //    m_clientSocket->connectToHost(QString(m_serverAddress), static_cast<int>(port));
+    m_clientSocket->connectToHost("127.0.0.1", 7999);
 
-    bool success = m_clientSocket->waitForConnected();
-
-    if (!success) {
+    if (m_clientSocket->state() == QAbstractSocket::ConnectedState ||
+        m_clientSocket->waitForConnected(10000)) {
+        success = true;
+        qDebug() << "Connected!";
+    } else {
+        success = false;
         qDebug() << m_clientSocket->error() << m_clientSocket->errorString();
     }
 
@@ -240,7 +265,6 @@ RoomWindow::~RoomWindow() {
     delete m_textMessages;
     delete m_lineMessage;
     delete m_listUsers;
-    ;
     delete m_pushButtonSend;
     delete m_pushButtonDisconnect;
 
