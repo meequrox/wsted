@@ -1,5 +1,8 @@
+#include <QtCore/QCoreApplication>
 #include <iomanip>
 #include <iostream>
+
+#include "server.hpp"
 
 #define DEFAULT_PORT 8044
 
@@ -28,7 +31,9 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "wsted server on 0.0.0.0:" << port << std::endl;
+    QCoreApplication a(argc, argv);
 
-    return EXIT_SUCCESS;
+    Server s(port);
+
+    return a.exec();
 }
