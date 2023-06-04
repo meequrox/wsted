@@ -61,6 +61,7 @@ void Server::readyRead() {
     QTcpSocket* client;
     QString userName;
     QString line;
+    QString messageToWrite;
 
     /* /command room:data */
     QRegExp regex("^/([a-z]+) ([a-zA-Z0-9]+):(.*)$");
@@ -70,37 +71,49 @@ void Server::readyRead() {
 
     client = (QTcpSocket*) sender();
 
-    while (client->canReadLine()) {
+    while (client->bytesAvailable()) {
         line = QString::fromUtf8(client->readLine().trimmed());
-
-        qDebug() << "Got line from" << client->peerAddress().toString() << ":\n" << line;
+        qDebug() << "Received message from client" << client->peerAddress().toString() << ":\n" << line;
 
         if (regex.indexIn(line) != -1) {
             // Got new command
 
             command = regex.cap(1);
             roomId = regex.cap(2);
-            data = regex.cap(3).trimmed();
+            data = regex.cap(3);
 
             if (command == "join") {
                 // New user in room
+
+                userName = data;
 
                 if (roomId == "new") {
                     do {
                         roomId = generateNewRoomId();
                     } while (users.contains(roomId));
 
-                    client->write(QString("/roomid" + roomId + ":.").toUtf8());
-                    QThread::msleep(1000);
+                    messageToWrite = "/roomid " + roomId + ":" + data + "\n";
+                    client->write(messageToWrite.toUtf8());
+
+                    qDebug() << "Send message to user" << userName << ":\n" << messageToWrite;
+
+                    QThread::msleep(500);
+                    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+                        messageToWrite = "Server: " + userName + " has joined.\n";
+                        clientInRoom->write(messageToWrite.toUtf8());
+
+                        qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+                    }
                 }
 
                 if (!users.contains(roomId)) users.insert(roomId, userMap());
-
-                userName = data;
                 users[roomId][client] = userName;
 
-                for (const auto [clientInRoom, value] : users[roomId].asKeyValueRange()) {
-                    clientInRoom->write(QString("Server: " + userName + " has joined.\n").toUtf8());
+                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+                    messageToWrite = "Server: " + userName + " has joined.\n";
+                    clientInRoom->write(messageToWrite.toUtf8());
+
+                    qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
                 }
 
                 sendUserList(roomId);
@@ -109,8 +122,11 @@ void Server::readyRead() {
 
                 userName = users[roomId][client];
 
-                for (const auto [clientInRoom, value] : users[roomId].asKeyValueRange()) {
-                    clientInRoom->write(QString(userName + ":" + data + "\n").toUtf8());
+                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+                    messageToWrite = userName + ":" + data + "\n";
+                    clientInRoom->write(messageToWrite.toUtf8());
+
+                    qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
                 }
 
                 qDebug() << "User" << userName << "sent new message:\n" << data;
@@ -120,8 +136,11 @@ void Server::readyRead() {
 
             userName = users[roomId][client];
 
-            for (const auto [clientInRoom, value] : users[roomId].asKeyValueRange()) {
-                clientInRoom->write(QString(userName + ':' + line + "\n").toUtf8());
+            for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+                messageToWrite = userName + ':' + line + "\n";
+                clientInRoom->write(messageToWrite.toUtf8());
+
+                qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
             }
 
             qDebug() << "User" << userName << "sent message:\n" << line;
@@ -135,6 +154,8 @@ void Server::disconnected() {
     LOG_CALL();
 
     QTcpSocket* client = (QTcpSocket*) sender();
+    QString messageToWrite;
+
     QString userName("unknown");
     QString fromRoomId("unknown?");
 
@@ -148,30 +169,42 @@ void Server::disconnected() {
         }
     }
 
-    clients.remove(client);
     qDebug() << "Client disconnected:" << client->peerAddress().toString();
 
-    sendUserList(fromRoomId);
+    clients.remove(client);
+    // delete client;
 
     if (fromRoomId != "unknown?") {
-        for (const auto [clientInRoom, value] : users[fromRoomId].asKeyValueRange()) {
-            clientInRoom->write(QString("Server: " + userName + " has left.\n").toUtf8());
-        }
-    }
+        qDebug() << "This client was in room" << fromRoomId << "\n";
 
-    delete client;
+        for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
+            messageToWrite = "Server: " + userName + " has left.\n";
+            clientInRoom->write(messageToWrite.toUtf8());
+
+            qDebug() << "Send message to user" << clientUserName << ":\n" << messageToWrite;
+        }
+
+        sendUserList(fromRoomId);
+    } else {
+        qDebug() << "This client was not in any room"
+                 << "\n";
+    }
 }
 
 void Server::sendUserList(QString roomId) {
     LOG_CALL();
 
     QStringList userList;
+    QString message;
 
     foreach (const auto& userName, users[roomId].values()) {
         userList.append(userName);
     }
 
-    for (const auto [clientInRoom, value] : users[roomId].asKeyValueRange()) {
-        clientInRoom->write(QString("/users: " + userList.join(',') + "\n").toUtf8());
+    message = "/users " + roomId + ":" + userList.join(',') + "\n";
+
+    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+        clientInRoom->write(message.toUtf8());
+        qDebug() << "Sent message to user" << clientUserName << ":\n" << message;
     }
 }
