@@ -1,11 +1,11 @@
 #include <QApplication>
 
-#include "wsted.hpp"
+#include "loginwindow.hpp"
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
-    wsted w;
+    LoginWindow w;
     w.show();
 
     return a.exec();
