@@ -161,7 +161,7 @@ void LoginWindow::pushButtonConnect_clicked() {
         return;
     }
 
-    qDebug() << "\nShow room window";
+    qDebug() << "\nSet username, room ID, server address for RoomWindow";
 
     m_widgetRoom->setUserName(m_lineUserName->text());
     m_widgetRoom->setRoomId(m_lineRoomId->text());
