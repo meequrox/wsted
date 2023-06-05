@@ -44,6 +44,7 @@ class RoomWindow : public QWidget {
     QPushButton* m_pushButtonDisconnect;
 
     QTcpSocket* m_clientSocket;
+    bool m_clientSocketDisconnected;
 
    public slots:
     void pushButtonSend_clicked();

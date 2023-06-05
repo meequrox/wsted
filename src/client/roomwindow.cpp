@@ -22,7 +22,7 @@ static QSize getDefaultWindowSize() {
     return s;
 }
 
-RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent) {
+RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconnected(false) {
     LOG_CALL();
 
     m_textMessages = new QTextEdit(this);
@@ -115,6 +115,9 @@ void RoomWindow::pushButtonSend_clicked() {
 void RoomWindow::pushButtonDisconnect_clicked() {
     LOG_CALL();
 
+    if (m_clientSocketDisconnected) return;
+
+    m_clientSocketDisconnected = true;
     m_clientSocket->disconnectFromHost();
 
     if (m_clientSocket->state() == QAbstractSocket::UnconnectedState ||
@@ -225,6 +228,8 @@ bool RoomWindow::connectToServer() {
     if (m_clientSocket->state() == QAbstractSocket::ConnectedState ||
         m_clientSocket->waitForConnected(10000)) {
         success = true;
+        m_clientSocketDisconnected = false;
+
         qDebug() << "Connected!";
     } else {
         success = false;
