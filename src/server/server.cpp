@@ -185,12 +185,18 @@ void Server::disconnected() {
     if (fromRoomId != "unknown?") {
         qDebug() << "This client was in room" << fromRoomId << '\n';
 
-        for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
-            messageToWrite = "Server: " + userName + " has left.\n";
-            clientInRoom->write(messageToWrite.toUtf8());
-        }
+        if (users[fromRoomId].size() == 0) {
+            users.remove(fromRoomId);
 
-        sendUserList(fromRoomId);
+            qDebug() << "Deleted room" << fromRoomId << "(no more users in room)" << '\n';
+        } else {
+            for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
+                messageToWrite = "Server: " + userName + " has left.\n";
+                clientInRoom->write(messageToWrite.toUtf8());
+            }
+
+            sendUserList(fromRoomId);
+        }
     } else {
         qDebug() << "This client was not in any room\n";
     }
