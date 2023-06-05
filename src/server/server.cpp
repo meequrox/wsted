@@ -180,7 +180,7 @@ void Server::disconnected() {
     qDebug() << "Client disconnected:" << client->peerAddress().toString();
 
     clients.remove(client);
-    // delete client;
+    client->deleteLater();
 
     if (fromRoomId != "unknown?") {
         qDebug() << "This client was in room" << fromRoomId << "\n";
