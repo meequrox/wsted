@@ -16,12 +16,14 @@ set(CLIENT_PROJECT_SOURCES
     src/client/main.cpp
     src/client/loginwindow.hpp src/client/loginwindow.cpp
     src/client/roomwindow.hpp src/client/roomwindow.cpp
+    src/logger.hpp src/logger.cpp
     resources/ui.qrc
 )
 
 set(SERVER_PROJECT_SOURCES
     src/server/main.cpp
     src/server/server.hpp src/server/server.cpp
+    src/logger.hpp src/logger.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
