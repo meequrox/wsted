@@ -85,10 +85,12 @@ void RoomWindow::ui_loadContents() {
 
     m_pushButtonSend->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_pushButtonSend->setText("Send");
+    m_pushButtonSend->setDefault(true);
 
     m_pushButtonDisconnect->setStyleSheet(m_pushButtonSend->styleSheet());
     m_pushButtonDisconnect->setText("Disconnect");
 
+    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSend_clicked()));
     this->connect(m_pushButtonSend, SIGNAL(clicked()), SLOT(pushButtonSend_clicked()));
     this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
 }
