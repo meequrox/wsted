@@ -58,7 +58,7 @@ void LoginWindow::ui_setupGeometry() {
     this->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
     this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
 
-    qDebug() << "Window" << this->size() << this->windowFlags();
+    qDebug() << "Window" << size();
 
     // Menubar
     m_menuHelp->addAction(m_actionAbout);

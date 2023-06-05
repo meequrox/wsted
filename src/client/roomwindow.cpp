@@ -48,7 +48,7 @@ void RoomWindow::ui_setupGeometry() {
     // Window
     this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
 
-    qDebug() << "Window" << this->size() << this->windowFlags();
+    qDebug() << "Window" << size();
 
     m_textMessages->setGeometry(QRect(0, 0, size().width() * 0.75, size().height() * 0.93));
     m_lineMessage->setGeometry(
@@ -98,7 +98,7 @@ void RoomWindow::pushButtonSend_clicked() {
     QString message = m_lineMessage->text().trimmed();
 
     if (!message.isEmpty()) {
-        message = "/message " + m_roomId + ":" + message + "\n";
+        message = "/message " + m_roomId + ":" + message + '\n';
 
         m_clientSocket->write(message.toUtf8());
         m_lineMessage->clear();

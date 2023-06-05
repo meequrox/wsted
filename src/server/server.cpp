@@ -90,7 +90,7 @@ void Server::readyRead() {
                 if (roomId == "new") {
                     roomId = generateNewRoomId();
 
-                    messageToWrite = "/roomid " + roomId + ":" + data + "\n";
+                    messageToWrite = "/roomid " + roomId + ":" + data + '\n';
                     client->write(messageToWrite.toUtf8());
                     messageLogger("Sent", client, messageToWrite);
 
@@ -123,7 +123,7 @@ void Server::readyRead() {
 
                 users[roomId][client] = userName;
 
-                messageToWrite = "/userid " + roomId + ':' + userName + "\n";
+                messageToWrite = "/userid " + roomId + ':' + userName + '\n';
                 client->write(messageToWrite.toUtf8());
                 messageLogger("Sent", userName, messageToWrite);
 
@@ -139,7 +139,7 @@ void Server::readyRead() {
                 userName = users[roomId][client];
 
                 for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                    messageToWrite = userName + ":" + data + "\n";
+                    messageToWrite = userName + ":" + data + '\n';
                     clientInRoom->write(messageToWrite.toUtf8());
                 }
             }
@@ -149,7 +149,7 @@ void Server::readyRead() {
             userName = users[roomId][client];
 
             for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                messageToWrite = userName + ':' + line + "\n";
+                messageToWrite = userName + ':' + line + '\n';
                 clientInRoom->write(messageToWrite.toUtf8());
             }
         } else {
@@ -183,7 +183,7 @@ void Server::disconnected() {
     client->deleteLater();
 
     if (fromRoomId != "unknown?") {
-        qDebug() << "This client was in room" << fromRoomId << "\n";
+        qDebug() << "This client was in room" << fromRoomId << '\n';
 
         for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
             messageToWrite = "Server: " + userName + " has left.\n";
@@ -206,7 +206,7 @@ void Server::sendUserList(QString roomId) {
         userList.append(userName);
     }
 
-    message = "/users " + roomId + ":" + userList.join(',') + "\n";
+    message = "/users " + roomId + ":" + userList.join(',') + '\n';
 
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
         clientInRoom->write(message.toUtf8());
