@@ -5,9 +5,9 @@
 #include <QScreen>
 #include <QThread>
 
-#define DEFAULT_PORT 8044
+#include "../logger.hpp"
 
-#define LOG_CALL() qDebug().nospace() << __PRETTY_FUNCTION__ << " call"
+#define DEFAULT_PORT 8044
 
 static QSize getDefaultWindowSize() {
     LOG_CALL();
@@ -103,7 +103,7 @@ void RoomWindow::pushButtonSend_clicked() {
         m_clientSocket->write(message.toUtf8());
         m_lineMessage->clear();
 
-        qDebug() << "Sent message to server:\n" << message;
+        messageLogger("Sent", m_clientSocket, message);
     }
 
     m_lineMessage->setFocus();
@@ -138,7 +138,7 @@ void RoomWindow::readyRead() {
 
     while (m_clientSocket->bytesAvailable()) {
         line = QString::fromUtf8(m_clientSocket->readLine().trimmed());
-        qDebug() << "Received message from server:\n" << line;
+        messageLogger("Received", m_clientSocket, line);
 
         if (regex.indexIn(line) != -1) {
             command = regex.cap(1);
@@ -155,10 +155,9 @@ void RoomWindow::readyRead() {
                 m_listUsers->clear();
                 for (const auto& user : userList) {
                     m_listUsers->addItem(user);
-                    qDebug() << "Add user" << user << "to GUI list";
                 }
             } else {
-                qDebug() << "Unknown command from server:\n" << line;
+                messageLogger("Bad", "server", line);
             }
         } else if (line.contains(':')) {
             auto idx = line.indexOf(':');
@@ -172,12 +171,12 @@ void RoomWindow::readyRead() {
 
 void RoomWindow::connected() {
     LOG_CALL();
-    QThread::msleep(100);
+    QThread::msleep(10);
 
     QString message = "/join " + m_roomId + ':' + m_userName;
     m_clientSocket->write(message.toUtf8());
 
-    qDebug() << "Sent message to server:\n" << message;
+    messageLogger("Sent", m_clientSocket, message);
 }
 
 void RoomWindow::resizeEvent(QResizeEvent* ev) {
@@ -213,8 +212,8 @@ bool RoomWindow::connectToServer() {
 
     qDebug().noquote() << __FUNCTION__ << ": connect to address" << address << "port" << port;
 
-    //    m_clientSocket->connectToHost(QString(m_serverAddress), static_cast<int>(port));
-    m_clientSocket->connectToHost("127.0.0.1", 7999);
+    // m_clientSocket->connectToHost(m_serverAddress, port);
+    m_clientSocket->connectToHost("0.0.0.0", DEFAULT_PORT);
 
     if (m_clientSocket->state() == QAbstractSocket::ConnectedState ||
         m_clientSocket->waitForConnected(10000)) {
@@ -222,7 +221,7 @@ bool RoomWindow::connectToServer() {
         qDebug() << "Connected!";
     } else {
         success = false;
-        qDebug() << m_clientSocket->error() << m_clientSocket->errorString();
+        qDebug() << m_clientSocket->errorString();
     }
 
     return success;

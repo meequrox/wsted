@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QTime>
 
-#define LOG_CALL() qDebug().nospace() << __PRETTY_FUNCTION__ << " call"
+#include "../logger.hpp"
 
 Server::Server(int _port, QObject* parent) : QTcpServer(parent) {
     LOG_CALL();
@@ -21,11 +21,7 @@ Server::Server(int _port, QObject* parent) : QTcpServer(parent) {
     qDebug() << "Server: listening at address" << address.toString() << "on port" << _port;
 }
 
-Server::~Server() {
-    LOG_CALL();
-
-    this->deleteLater();
-}
+Server::~Server() { LOG_CALL(); }
 
 void Server::incomingConnection(qintptr socketDescriptor) {
     LOG_CALL();
@@ -45,14 +41,18 @@ QString Server::generateNewRoomId() {
     QRandomGenerator generator(QDateTime::currentSecsSinceEpoch());
 
     QString allowedChars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    QString str;
+    QString newRoomId;
 
-    while (str.size() != 10) {
-        auto r = generator.generate() % allowedChars.size();
-        str += allowedChars[r];
-    }
+    do {
+        newRoomId.clear();
 
-    return str;
+        for (; newRoomId.size() != 10;) {
+            auto r = generator.generate() % allowedChars.size();
+            newRoomId += allowedChars[r];
+        }
+    } while (users.contains(newRoomId));
+
+    return newRoomId;
 }
 
 void Server::readyRead() {
@@ -73,7 +73,7 @@ void Server::readyRead() {
 
     while (client->bytesAvailable()) {
         line = QString::fromUtf8(client->readLine().trimmed());
-        qDebug() << "Received message from client" << client->peerAddress().toString() << ":\n" << line;
+        messageLogger("Received", client, line);
 
         if (regex.indexIn(line) != -1) {
             // Got new command
@@ -88,23 +88,15 @@ void Server::readyRead() {
                 userName = data;
 
                 if (roomId == "new") {
-                    do {
-                        roomId = generateNewRoomId();
-                    } while (users.contains(roomId));
+                    roomId = generateNewRoomId();
 
                     messageToWrite = "/roomid " + roomId + ":" + data + "\n";
                     client->write(messageToWrite.toUtf8());
+                    messageLogger("Sent", client, messageToWrite);
 
-                    qDebug() << "Sent message to client" << client->peerAddress().toString() << ":\n"
-                             << messageToWrite;
-
-                    QThread::msleep(500);
                     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                         messageToWrite = "Server: " + userName + " has joined.\n";
                         clientInRoom->write(messageToWrite.toUtf8());
-
-                        qDebug() << "Sent message to client" << client->peerAddress().toString() << ":\n"
-                                 << messageToWrite;
                     }
                 }
 
@@ -133,13 +125,11 @@ void Server::readyRead() {
 
                 messageToWrite = "/userid " + roomId + ':' + userName + "\n";
                 client->write(messageToWrite.toUtf8());
-                qDebug() << "Sent message to user" << userName << ":\n" << messageToWrite;
+                messageLogger("Sent", userName, messageToWrite);
 
                 for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                     messageToWrite = "Server: " + userName + " has joined.\n";
                     clientInRoom->write(messageToWrite.toUtf8());
-
-                    qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
                 }
 
                 sendUserList(roomId);
@@ -151,11 +141,7 @@ void Server::readyRead() {
                 for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                     messageToWrite = userName + ":" + data + "\n";
                     clientInRoom->write(messageToWrite.toUtf8());
-
-                    qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
                 }
-
-                qDebug() << "User" << userName << "sent new message:\n" << data;
             }
         } else if (users[roomId].contains(client)) {
             // Part of the message
@@ -165,13 +151,9 @@ void Server::readyRead() {
             for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
                 messageToWrite = userName + ':' + line + "\n";
                 clientInRoom->write(messageToWrite.toUtf8());
-
-                qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
             }
-
-            qDebug() << "User" << userName << "sent message:\n" << line;
         } else {
-            qWarning() << "Client" << client->peerAddress().toString() << "sent bad message";
+            messageLogger("Bad", client, line);
         }
     }
 }
@@ -206,14 +188,11 @@ void Server::disconnected() {
         for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
             messageToWrite = "Server: " + userName + " has left.\n";
             clientInRoom->write(messageToWrite.toUtf8());
-
-            qDebug() << "Sent message to user" << clientUserName << ":\n" << messageToWrite;
         }
 
         sendUserList(fromRoomId);
     } else {
-        qDebug() << "This client was not in any room"
-                 << "\n";
+        qDebug() << "This client was not in any room\n";
     }
 }
 
@@ -231,6 +210,5 @@ void Server::sendUserList(QString roomId) {
 
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
         clientInRoom->write(message.toUtf8());
-        qDebug() << "Sent message to user" << clientUserName << ":\n" << message;
     }
 }
