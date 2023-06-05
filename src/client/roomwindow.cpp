@@ -40,6 +40,7 @@ RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent) {
     m_clientSocket = new QTcpSocket();
     this->connect(m_clientSocket, SIGNAL(readyRead()), this, SLOT(readyRead()));
     this->connect(m_clientSocket, SIGNAL(connected()), this, SLOT(connected()));
+    this->connect(m_clientSocket, SIGNAL(disconnected()), this, SLOT(pushButtonDisconnect_clicked()));
 }
 
 void RoomWindow::ui_setupGeometry() {
