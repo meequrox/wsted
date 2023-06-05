@@ -119,6 +119,10 @@ void RoomWindow::pushButtonDisconnect_clicked() {
         qDebug() << "Disconnected!";
     }
 
+    m_textMessages->clear();
+    m_lineMessage->clear();
+    m_listUsers->clear();
+
     emit closed();
     this->close();
 }
