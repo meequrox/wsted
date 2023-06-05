@@ -78,6 +78,7 @@ void RoomWindow::ui_loadContents() {
         "color:white;border:1px solid white;border-radius:1px;border-right:0px");
     m_lineMessage->setClearButtonEnabled(true);
     m_lineMessage->setText("");
+    m_lineMessage->setMaxLength(2048 - 16 - 2);
     m_lineMessage->setPlaceholderText("Type here");
 
     m_listUsers->setStyleSheet("color:white;border:0px;border-left:1px solid white;border-radius:1px");
