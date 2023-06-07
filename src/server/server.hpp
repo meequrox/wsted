@@ -1,6 +1,7 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <QFile>
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -22,6 +23,7 @@ class Server : public QTcpServer {
 
     QSet<QTcpSocket*> clients;
     QMap<roomId, userMap> users;
+    QSet<QString> files;
 
    public slots:
     void readyRead();
