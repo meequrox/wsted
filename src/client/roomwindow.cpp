@@ -1,6 +1,8 @@
 #include "roomwindow.hpp"
 
 #include <QApplication>
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QRegExp>
 #include <QScreen>
 #include <QThread>
@@ -28,7 +30,8 @@ RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconn
     m_textMessages = new QTextEdit(this);
     m_lineMessage = new QLineEdit(this);
     m_listUsers = new QListWidget(this);
-    m_pushButtonSend = new QPushButton(this);
+    m_pushButtonSendMessage = new QPushButton(this);
+    m_pushButtonSendFile = new QPushButton(this);
     m_pushButtonDisconnect = new QPushButton(this);
 
     this->setMinimumSize(480, 320);
@@ -58,10 +61,13 @@ void RoomWindow::ui_setupGeometry() {
     m_listUsers->setGeometry(
         QRect(m_textMessages->width(), 0, m_textMessages->width(), m_textMessages->height()));
 
-    m_pushButtonSend->setGeometry(QRect(m_lineMessage->width(), m_textMessages->height(),
-                                        size().width() * 0.25 / 3, size().height() * 0.07));
-    m_pushButtonDisconnect->setGeometry(QRect(m_textMessages->width(), m_pushButtonSend->y(),
+    m_pushButtonSendMessage->setGeometry(QRect(m_lineMessage->width(), m_textMessages->height(),
+                                               size().width() * 0.25 / 3, size().height() * 0.07));
+    m_pushButtonDisconnect->setGeometry(QRect(m_textMessages->width(), m_pushButtonSendMessage->y(),
                                               size().width() * 0.25, size().height() * 0.07));
+    m_pushButtonSendFile->setGeometry(QRect(
+        m_pushButtonDisconnect->x(), m_pushButtonDisconnect->y() - m_pushButtonDisconnect->height() - 1,
+        m_pushButtonDisconnect->width(), m_pushButtonDisconnect->height()));
 }
 
 void RoomWindow::ui_loadContents() {
@@ -78,25 +84,30 @@ void RoomWindow::ui_loadContents() {
         "color:white;border:1px solid white;border-radius:1px;border-right:0px");
     m_lineMessage->setClearButtonEnabled(true);
     m_lineMessage->setText("");
-    m_lineMessage->setMaxLength(2048 - 16 - 2);
+    m_lineMessage->setMaxLength(2048 - 8 - 10 - 3);
     m_lineMessage->setPlaceholderText("Type here");
 
     m_listUsers->setStyleSheet("color:white;border:0px;border-left:1px solid white;border-radius:1px");
     m_listUsers->clear();
 
-    m_pushButtonSend->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
-    m_pushButtonSend->setText("Send");
-    m_pushButtonSend->setDefault(true);
+    m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
+    m_pushButtonSendMessage->setText("Say");
+    m_pushButtonSendMessage->setDefault(true);
 
-    m_pushButtonDisconnect->setStyleSheet(m_pushButtonSend->styleSheet());
+    m_pushButtonSendFile->setStyleSheet(m_pushButtonSendMessage->styleSheet());
+    m_pushButtonSendFile->setText("Upload file");
+
+    m_pushButtonDisconnect->setStyleSheet(m_pushButtonSendMessage->styleSheet());
     m_pushButtonDisconnect->setText("Disconnect");
 
-    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSend_clicked()));
-    this->connect(m_pushButtonSend, SIGNAL(clicked()), SLOT(pushButtonSend_clicked()));
+    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSendMessage_clicked()));
+
+    this->connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
+    this->connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
     this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
 }
 
-void RoomWindow::pushButtonSend_clicked() {
+void RoomWindow::pushButtonSendMessage_clicked() {
     LOG_CALL();
 
     QString message = m_lineMessage->text().trimmed();
@@ -111,6 +122,45 @@ void RoomWindow::pushButtonSend_clicked() {
     }
 
     m_lineMessage->setFocus();
+}
+
+void RoomWindow::pushButtonSendFile_clicked() {
+    LOG_CALL();
+
+    QString filePath;
+    QString fileName;
+    QString messageToWrite;
+
+    filePath = QFileDialog::getOpenFileName(this);
+    if (filePath.isEmpty()) {
+        qDebug() << "No file has been chosen for upload";
+        return;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << file.fileName() << file.errorString();
+        return;
+    }
+
+    if (file.size() > (1 << 20) * 512) {
+        messageToWrite =
+            "The size of the selected file is larger than allowed (512 MiB), the process is aborted.";
+        qDebug() << messageToWrite;
+
+        QMessageBox::warning(this, "Upload file", messageToWrite, QMessageBox::Close,
+                             QMessageBox::Close);
+
+        file.close();
+        return;
+    }
+
+    fileName = "'" + filePath.mid(filePath.lastIndexOf('/') + 1) + "'";
+    messageToWrite = "/sendfile " + fileName + ' ' + m_roomId + ':' + file.readAll().toBase64() + '\n';
+
+    m_clientSocket->write(messageToWrite.toUtf8());
+    messageLogger("Sent FILE", m_clientSocket,
+                  messageToWrite.mid(0, messageToWrite.indexOf(':') + 1) + "_BASE64_DATA_");
 }
 
 void RoomWindow::pushButtonDisconnect_clicked() {
@@ -147,7 +197,7 @@ void RoomWindow::readyRead() {
     QString roomId;
     QString data;
 
-    while (m_clientSocket->bytesAvailable()) {
+    while (m_clientSocket->canReadLine()) {
         line = QString::fromUtf8(m_clientSocket->readLine().trimmed());
         messageLogger("Received", m_clientSocket, line);
 
@@ -184,7 +234,7 @@ void RoomWindow::connected() {
     LOG_CALL();
     QThread::msleep(10);
 
-    QString message = "/join " + m_roomId + ':' + m_userName;
+    QString message = "/join " + m_roomId + ':' + m_userName + '\n';
     m_clientSocket->write(message.toUtf8());
 
     messageLogger("Sent", m_clientSocket, message);
@@ -275,11 +325,12 @@ void RoomWindow::updateWindowTitle() {
 RoomWindow::~RoomWindow() {
     LOG_CALL();
 
-    delete m_textMessages;
-    delete m_lineMessage;
-    delete m_listUsers;
-    delete m_pushButtonSend;
-    delete m_pushButtonDisconnect;
+    m_textMessages->deleteLater();
+    m_lineMessage->deleteLater();
+    m_listUsers->deleteLater();
+    m_pushButtonSendMessage->deleteLater();
+    m_pushButtonSendFile->deleteLater();
+    m_pushButtonDisconnect->deleteLater();
 
-    delete m_clientSocket;
+    m_clientSocket->deleteLater();
 }

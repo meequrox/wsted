@@ -40,14 +40,17 @@ class RoomWindow : public QWidget {
     QTextEdit* m_textMessages;
     QLineEdit* m_lineMessage;
     QListWidget* m_listUsers;
-    QPushButton* m_pushButtonSend;
+    // TODO: QListWidget* m_listFiles;
+    QPushButton* m_pushButtonSendMessage;
+    QPushButton* m_pushButtonSendFile;
     QPushButton* m_pushButtonDisconnect;
 
     QTcpSocket* m_clientSocket;
     bool m_clientSocketDisconnected;
 
    public slots:
-    void pushButtonSend_clicked();
+    void pushButtonSendMessage_clicked();
+    void pushButtonSendFile_clicked();
     void pushButtonDisconnect_clicked();
 
     void readyRead();
