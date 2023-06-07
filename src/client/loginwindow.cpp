@@ -183,14 +183,17 @@ void LoginWindow::pushButtonConnect_clicked() {
 LoginWindow::~LoginWindow() {
     LOG_CALL();
 
-    delete m_actionAbout;
-    delete m_menuHelp;
-    delete m_menubar;
-    delete m_comboBoxServers;
+    m_actionAbout->deleteLater();
+    m_menuHelp->deleteLater();
+    m_menubar->deleteLater();
+    m_comboBoxServers->deleteLater();
+
     delete m_lineUserName->validator();
-    delete m_lineUserName;
+    m_lineUserName->deleteLater();
+
     delete m_lineRoomId->validator();
-    delete m_lineRoomId;
-    delete m_pushButtonConnect;
-    delete m_widgetRoom;
+    m_lineRoomId->deleteLater();
+
+    m_pushButtonConnect->deleteLater();
+    m_widgetRoom->deleteLater();
 }
