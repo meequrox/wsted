@@ -1,16 +1,18 @@
 #include "logger.hpp"
 
 void messageLogger(const QString& action, const QString& clientName, const QString& msg) {
+    QString actionLower;
     QString borderString;
     QDateTime dateTime;
     QString where;
 
+    actionLower = action.toLower();
     borderString = QString(8, '-');
     dateTime = QDateTime().currentDateTime();
 
-    if (action.toLower() == "sent") {
+    if (actionLower.startsWith("sent")) {
         where = "to";
-    } else if (action.toLower() == "received" || action.toLower() == "bad") {
+    } else if (actionLower.startsWith("received") || actionLower.startsWith("bad")) {
         where = "from";
     } else {
         where = "?";
