@@ -332,7 +332,7 @@ void RoomWindow::readyRead() {
                 QString downloadRoomPath = QString(getenv("HOME")) + "/Downloads/" + roomId;
                 receiveFile(filename, data, downloadRoomPath);
 
-                m_textMessages->append("Downloaded file <b>" + filename + "</b> to <b>" +
+                m_textMessages->append("Downloaded file <b>'" + filename + "'</b> to <b>" +
                                        downloadRoomPath + "</b>");
 
                 messageLogger("Received FILE", m_clientSocket, filename);
