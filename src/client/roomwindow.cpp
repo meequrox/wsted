@@ -143,7 +143,7 @@ void RoomWindow::pushButtonSendMessage_clicked() {
     QString message = m_lineMessage->text().trimmed();
 
     if (!message.isEmpty()) {
-        message = "/message " + m_roomId + ":" + message + '\n';
+        message = "/msg " + m_roomId + ":" + message + '\n';
 
         m_clientSocket->write(message.toUtf8());
         m_lineMessage->clear();

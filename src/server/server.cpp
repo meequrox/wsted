@@ -149,7 +149,7 @@ void Server::readyRead() {
 
                 sendUserList(roomId);
                 sendFileList(roomId, client);
-            } else if (command == "message") {
+            } else if (command == "msg") {
                 // New text message from client
 
                 messageLogger("Received TEXT", client, line);
