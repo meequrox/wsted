@@ -33,21 +33,38 @@ class RoomWindow : public QWidget {
     void ui_setupGeometry();
     void ui_loadContents();
 
+    // Messages
+    void receiveTextMessage(const QString& msg);
+
+    // Users
+    void setUserList(const QString& separatedString);
+
+    // Files
+    void setFileList(const QString& separatedString);
+    void receiveFile(QString& fileName, const QString& base64_data, const QString& outputDir);
+
     QString m_userName;
     QString m_roomId;
     QString m_serverAddress;
 
-    QAction* m_actionDownload;
-    QTextEdit* m_textMessages;
-    QLineEdit* m_lineMessage;
-    QListWidget* m_listUsers;
-    QListWidget* m_listFiles;
-    QPushButton* m_pushButtonSendMessage;
-    QPushButton* m_pushButtonSendFile;
-    QPushButton* m_pushButtonDisconnect;
-
     QTcpSocket* m_clientSocket;
     bool m_clientSocketDisconnected;
+
+    // Messages
+    QTextEdit* m_textMessages;
+    QLineEdit* m_lineMessage;
+    QPushButton* m_pushButtonSendMessage;
+
+    // Users
+    QListWidget* m_listUsers;
+
+    // Files
+    QListWidget* m_listFiles;
+    QAction* m_actionDownload;
+    QPushButton* m_pushButtonSendFile;
+
+    // Disconnect
+    QPushButton* m_pushButtonDisconnect;
 
    public slots:
     void actionDownload_triggered();

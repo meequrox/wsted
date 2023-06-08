@@ -12,8 +12,6 @@
 #define DEFAULT_PORT 8044
 
 static QSize getDefaultWindowSize() {
-    LOG_CALL();
-
     const QSize screenSize = QApplication::primaryScreen()->size();
     const qreal screenRatio = QApplication::primaryScreen()->devicePixelRatio();
 
@@ -25,15 +23,20 @@ static QSize getDefaultWindowSize() {
 }
 
 RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconnected(false) {
-    LOG_CALL();
-
-    m_actionDownload = new QAction(this);
+    // Messages
     m_textMessages = new QTextEdit(this);
     m_lineMessage = new QLineEdit(this);
-    m_listUsers = new QListWidget(this);
-    m_listFiles = new QListWidget(this);
     m_pushButtonSendMessage = new QPushButton(this);
+
+    // Users
+    m_listUsers = new QListWidget(this);
+
+    // Files
+    m_listFiles = new QListWidget(this);
+    m_actionDownload = new QAction(this);
     m_pushButtonSendFile = new QPushButton(this);
+
+    // Disconnect
     m_pushButtonDisconnect = new QPushButton(this);
 
     this->setMinimumSize(480, 320);
@@ -49,40 +52,39 @@ RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconn
 }
 
 void RoomWindow::ui_setupGeometry() {
-    LOG_CALL();
-
     // Window
     this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
-
     qDebug() << "Window" << size();
 
+    // Messages
     m_textMessages->setGeometry(QRect(0, 0, size().width() * 0.75, size().height() * 0.93));
     m_lineMessage->setGeometry(
         QRect(0, m_textMessages->height(), size().width() * 2 / 3, size().height() * 0.07));
-
     m_pushButtonSendMessage->setGeometry(QRect(m_lineMessage->width(), m_textMessages->height(),
                                                size().width() * 0.25 / 3, size().height() * 0.07));
+
+    // Users
+    m_listUsers->setGeometry(
+        QRect(m_textMessages->width(), 0, size().width() * 0.25, m_textMessages->height() * 0.50));
+
+    // Disconnect
     m_pushButtonDisconnect->setGeometry(QRect(m_textMessages->width(), m_pushButtonSendMessage->y(),
                                               size().width() * 0.25, size().height() * 0.07));
+
+    // Files
     m_pushButtonSendFile->setGeometry(QRect(
         m_pushButtonDisconnect->x(), m_pushButtonDisconnect->y() - m_pushButtonDisconnect->height() - 1,
         m_pushButtonDisconnect->width(), m_pushButtonDisconnect->height()));
-
-    m_listUsers->setGeometry(
-        QRect(m_textMessages->width(), 0, size().width() * 0.25, m_textMessages->height() * 0.50));
     m_listFiles->setGeometry(QRect(m_textMessages->width(), m_listUsers->height(), m_listUsers->width(),
                                    m_listUsers->height() - m_pushButtonSendFile->height() - 2));
 }
 
 void RoomWindow::ui_loadContents() {
-    LOG_CALL();
-
+    // Window
     this->setWindowTitle("Connecting...");
     this->setWindowIcon(QIcon(":/icons/app"));
 
-    m_actionDownload->setText("Download");
-    this->connect(m_actionDownload, SIGNAL(triggered()), SLOT(actionDownload_triggered()));
-
+    // Messages
     m_textMessages->setStyleSheet(
         "color:white;border:0px;border-left:1px solid white;border-radius:1px");
     m_textMessages->setReadOnly(true);
@@ -94,32 +96,98 @@ void RoomWindow::ui_loadContents() {
     m_lineMessage->setText("");
     m_lineMessage->setMaxLength(2048 - 8 - 10 - 3);
     m_lineMessage->setPlaceholderText("Type here");
+    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSendMessage_clicked()));
 
+    m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
+    m_pushButtonSendMessage->setText("Say");
+    m_pushButtonSendMessage->setDefault(true);
+    this->connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
+
+    // Users
     m_listUsers->setStyleSheet(
         "color:white;border:0px;border-left:1px solid white;border-right:1px solid "
         "white;border-radius:1px");
     m_listUsers->clear();
 
+    // Files
     m_listFiles->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_listFiles->clear();
     m_listFiles->setContextMenuPolicy(Qt::ActionsContextMenu);
     m_listFiles->insertAction(nullptr, m_actionDownload);
 
-    m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
-    m_pushButtonSendMessage->setText("Say");
-    m_pushButtonSendMessage->setDefault(true);
+    m_actionDownload->setText("Download");
+    this->connect(m_actionDownload, SIGNAL(triggered()), SLOT(actionDownload_triggered()));
 
     m_pushButtonSendFile->setStyleSheet(m_pushButtonSendMessage->styleSheet());
     m_pushButtonSendFile->setText("Upload file");
+    this->connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
 
+    // Disconnect
     m_pushButtonDisconnect->setStyleSheet(m_pushButtonSendMessage->styleSheet());
     m_pushButtonDisconnect->setText("Disconnect");
-
-    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSendMessage_clicked()));
-
-    this->connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
-    this->connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
     this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
+}
+
+void RoomWindow::receiveTextMessage(const QString& msg) {
+    QString userName;
+    QString message;
+
+    auto idx = msg.indexOf(':');
+    userName = msg.mid(0, idx);
+    message = msg.mid(idx + 1);
+
+    m_textMessages->append("<b>" + userName + "</b>: " + message);
+}
+
+void RoomWindow::setUserList(const QString& separatedString) {
+    QStringList userList = separatedString.split(',');
+
+    m_listUsers->clear();
+    for (const auto& user : userList) {
+        m_listUsers->addItem(user);
+    }
+}
+
+void RoomWindow::setFileList(const QString& separatedString) {
+    QStringList fileList = separatedString.split('/');
+
+    m_listFiles->clear();
+    for (const auto& fileName : fileList) {
+        m_listFiles->addItem(fileName);
+    }
+}
+
+void RoomWindow::receiveFile(QString& fileName, const QString& base64_data, const QString& outputDir) {
+    QDir dir;
+    if (!dir.mkpath(outputDir)) {
+        qDebug() << "Failed to create path" << outputDir;
+        return;
+    }
+
+    QFile file(outputDir + '/' + fileName);
+
+    while (file.exists()) {
+        qDebug() << "Duplicate filename" << fileName;
+
+        auto idx = fileName.lastIndexOf('.');
+        if (idx != -1) {
+            fileName = fileName.mid(0, idx) + "-1" + fileName.mid(idx);
+        } else {
+            fileName = fileName + "-1";
+        }
+
+        file.setFileName(outputDir + '/' + fileName);
+
+        qDebug() << "Changing to" << fileName;
+    }
+
+    if (!file.open(QIODevice::Append, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+        qDebug() << file.fileName() << file.errorString();
+        return;
+    }
+
+    file.write(QByteArray::fromBase64(base64_data.toUtf8()));
+    file.close();
 }
 
 void RoomWindow::actionDownload_triggered() {
@@ -132,31 +200,25 @@ void RoomWindow::actionDownload_triggered() {
         message = "/getfile '" + fileName + "' " + m_roomId + ":." + '\n';
 
         m_clientSocket->write(message.toUtf8());
-
         messageLogger("Sent", m_clientSocket, message);
     }
 }
 
 void RoomWindow::pushButtonSendMessage_clicked() {
-    LOG_CALL();
-
     QString message = m_lineMessage->text().trimmed();
 
     if (!message.isEmpty()) {
         message = "/msg " + m_roomId + ":" + message + '\n';
 
         m_clientSocket->write(message.toUtf8());
-        m_lineMessage->clear();
-
         messageLogger("Sent", m_clientSocket, message);
     }
 
+    m_lineMessage->clear();
     m_lineMessage->setFocus();
 }
 
 void RoomWindow::pushButtonSendFile_clicked() {
-    LOG_CALL();
-
     QString filePath;
     QString fileName;
     QString messageToWrite;
@@ -194,8 +256,6 @@ void RoomWindow::pushButtonSendFile_clicked() {
 }
 
 void RoomWindow::pushButtonDisconnect_clicked() {
-    LOG_CALL();
-
     if (m_clientSocketDisconnected) return;
 
     m_clientSocketDisconnected = true;
@@ -216,11 +276,7 @@ void RoomWindow::pushButtonDisconnect_clicked() {
 }
 
 void RoomWindow::readyRead() {
-    LOG_CALL();
-
-    QString userName;
     QString line;
-    QString message;
 
     QRegExp messageRegex("^/([a-z]+) ([a-zA-Z0-9]+):(.*)$");  // /command room:data
     QString command;
@@ -233,7 +289,6 @@ void RoomWindow::readyRead() {
 
     while (m_clientSocket->canReadLine()) {
         line = QString::fromUtf8(m_clientSocket->readLine().trimmed());
-        messageLogger("Received", m_clientSocket, line);
 
         if (messageRegex.indexIn(line) != -1) {
             // Message from server
@@ -243,23 +298,25 @@ void RoomWindow::readyRead() {
             data = messageRegex.cap(3);
 
             if (command == "roomid") {
-                this->setRoomId(roomId);
+                // Room ID for client from server
+                setRoomId(roomId);
+
+                messageLogger("Received ROOM_ID", m_clientSocket, line);
             } else if (command == "userid") {
-                this->setUserName(data);
+                // Username for client from server
+                setUserName(data);
+
+                messageLogger("Received USER_ID", m_clientSocket, line);
             } else if (command == "users" && roomId == m_roomId) {
-                QStringList userList = data.split(',');
+                // User list from server
+                setUserList(data);
 
-                m_listUsers->clear();
-                for (const auto& user : userList) {
-                    m_listUsers->addItem(user);
-                }
+                messageLogger("Received USER_LIST", m_clientSocket, line);
             } else if (command == "files" && roomId == m_roomId) {
-                QStringList fileList = data.split('/');
+                // File list from server
+                setFileList(data);
 
-                m_listFiles->clear();
-                for (const auto& fileName : fileList) {
-                    m_listFiles->addItem(fileName);
-                }
+                messageLogger("Received FILE_LIST", m_clientSocket, line);
             }
         } else if (fileRegex.indexIn(line) != -1) {
             // File from server
@@ -270,83 +327,47 @@ void RoomWindow::readyRead() {
             data = fileRegex.cap(4);
 
             if (command == "sendfile" && !filename.isEmpty() && !data.isEmpty()) {
-                messageLogger("Received FILE", m_clientSocket,
-                              '/' + command + " '" + filename + "' " + roomId + ":_BASE64_DATA_");
+                // File contents from server
 
-                QString downloadRoomPath = QString(getenv("HOME")) + "/Downloads/" + roomId + "/";
+                QString downloadRoomPath = QString(getenv("HOME")) + "/Downloads/" + roomId;
+                receiveFile(filename, data, downloadRoomPath);
 
-                QDir dir;
-                if (!dir.mkpath(downloadRoomPath)) {
-                    qDebug() << "Failed to create path" << downloadRoomPath;
-                    return;
-                }
-
-                QFile file(downloadRoomPath + filename);
-
-                while (file.exists()) {
-                    qDebug() << "Duplicate filename" << filename;
-
-                    auto idx = filename.lastIndexOf('.');
-                    if (idx != -1) {
-                        filename = filename.mid(0, idx) + "-1" + filename.mid(idx);
-                    } else {
-                        filename = filename + "-1";
-                    }
-
-                    file.setFileName(downloadRoomPath + filename);
-
-                    qDebug() << "Changing to" << filename;
-                }
-
-                if (!file.open(QIODevice::Append, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
-                    qDebug() << file.fileName() << file.errorString();
-                    return;
-                }
-
-                file.write(QByteArray::fromBase64(data.toUtf8()));
-                file.close();
+                m_textMessages->append("Downloaded file <b>" + filename + "</b> to <b>" +
+                                       downloadRoomPath + "</b>");
 
                 messageLogger("Received FILE", m_clientSocket, filename);
             }
         } else if (line.contains(':')) {
-            auto idx = line.indexOf(':');
-            userName = line.mid(0, idx);
-            message = line.mid(idx + 1);
+            // Text message from server
+            receiveTextMessage(line);
 
-            m_textMessages->append("<b>" + userName + "</b>: " + message);
+            messageLogger("Received TEXT", m_clientSocket, line);
         } else {
-            qDebug("^ Bad message\n");
+            messageLogger("Received BAD", m_clientSocket, line);
         }
     }
 }
 
 void RoomWindow::connected() {
-    LOG_CALL();
+    QString message = "/join " + m_roomId + ':' + m_userName + '\n';
+
     QThread::msleep(10);
 
-    QString message = "/join " + m_roomId + ':' + m_userName + '\n';
     m_clientSocket->write(message.toUtf8());
-
     messageLogger("Sent", m_clientSocket, message);
 }
 
 void RoomWindow::resizeEvent(QResizeEvent* ev) {
-    LOG_CALL();
-
     QWidget::resizeEvent(ev);
     ui_setupGeometry();
 }
 
 void RoomWindow::show() {
-    LOG_CALL();
-
     QWidget::show();
     emit opened();
 }
 
 bool RoomWindow::connectToServer() {
-    LOG_CALL();
-
     QString address;
     quint16 port;
     bool success;
@@ -407,21 +428,24 @@ void RoomWindow::setRoomId(const QString& str) {
 }
 
 void RoomWindow::updateWindowTitle() {
-    LOG_CALL();
-
     this->setWindowTitle(m_userName + '@' + m_roomId + " | " + m_serverAddress);
 }
 
 RoomWindow::~RoomWindow() {
-    LOG_CALL();
-
-    m_actionDownload->deleteLater();
+    // Messages
     m_textMessages->deleteLater();
     m_lineMessage->deleteLater();
-    m_listUsers->deleteLater();
-    m_listFiles->deleteLater();
     m_pushButtonSendMessage->deleteLater();
+
+    // Users
+    m_listUsers->deleteLater();
+
+    // Files
+    m_listFiles->deleteLater();
+    m_actionDownload->deleteLater();
     m_pushButtonSendFile->deleteLater();
+
+    // Disconnect
     m_pushButtonDisconnect->deleteLater();
 
     m_clientSocket->deleteLater();
