@@ -97,8 +97,8 @@ void LoginWindow::ui_loadContents() {
     m_comboBoxServers->lineEdit()->setReadOnly(true);
     m_comboBoxServers->lineEdit()->setAlignment(Qt::AlignCenter);
 
+    m_comboBoxServers->addItem("0.0.0.0");
     m_comboBoxServers->addItem("127.0.0.1:7999");
-    m_comboBoxServers->addItem("0.0.0.0:7999");
     m_comboBoxServers->addItem("anotherserv.io");
     m_comboBoxServers->addItem("super.bx:8814");
 

@@ -382,10 +382,8 @@ bool RoomWindow::connectToServer() {
         port = DEFAULT_PORT;
     }
 
-    qDebug().noquote() << __FUNCTION__ << ": connect to address" << address << "port" << port;
-
-    // m_clientSocket->connectToHost(m_serverAddress, port);
-    m_clientSocket->connectToHost("0.0.0.0", DEFAULT_PORT);
+    qDebug() << "Connect to" << m_serverAddress;
+    m_clientSocket->connectToHost(address, port);
 
     if (m_clientSocket->state() == QAbstractSocket::ConnectedState ||
         m_clientSocket->waitForConnected(10000)) {
