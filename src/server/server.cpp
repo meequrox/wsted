@@ -10,9 +10,7 @@
 #include "../logger.hpp"
 
 Server::Server(int _port, QObject* parent) : QTcpServer(parent) {
-    LOG_CALL();
-
-    QHostAddress address = QHostAddress::AnyIPv4;
+    QHostAddress address = QHostAddress::Any;
 
     if (this->listen(address, _port) == false) {
         qDebug() << "Could not listen at address" << address.toString() << "on port" << _port;
@@ -26,11 +24,9 @@ Server::Server(int _port, QObject* parent) : QTcpServer(parent) {
     qDebug() << "Server: listening at address" << address.toString() << "on port" << _port;
 }
 
-Server::~Server() { LOG_CALL(); }
+Server::~Server() {}
 
 void Server::incomingConnection(qintptr socketDescriptor) {
-    LOG_CALL();
-
     QTcpSocket* client = new QTcpSocket(this);
     client->setSocketDescriptor(socketDescriptor);
 
@@ -40,6 +36,14 @@ void Server::incomingConnection(qintptr socketDescriptor) {
     clients.insert(client);
 
     qDebug() << "New client: incoming connection from" << client->peerAddress().toString();
+}
+
+void Server::sendTextMessage(const QString& userName, const QString& roomId, const QString& msg) {
+    QString messageToWrite = userName + ":" + msg + '\n';
+
+    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+        clientInRoom->write(messageToWrite.toUtf8());
+    }
 }
 
 QString Server::generateNewRoomId() {
@@ -61,12 +65,8 @@ QString Server::generateNewRoomId() {
 }
 
 void Server::readyRead() {
-    LOG_CALL();
-
     QTcpSocket* client;
-    QString userName;
     QString line;
-    QString messageToWrite;
 
     QRegExp messageRegex("^/([a-z]+) ([a-zA-Z0-9]+):(.*)$");  // /command room:data
     QString command;
@@ -83,163 +83,42 @@ void Server::readyRead() {
         line = QString::fromUtf8(client->readLine().trimmed());
 
         if (messageRegex.indexIn(line) != -1) {
-            // New message from client
+            // Message from client
 
             command = messageRegex.cap(1);
             roomId = messageRegex.cap(2);
             data = messageRegex.cap(3);
 
             if (command == "join") {
-                // New user in room
-
+                // User wants to join some room
                 messageLogger("Received JOIN", client, line);
 
-                userName = data;
-
-                if (roomId == "new") {
-                    roomId = generateNewRoomId();
-
-                    messageToWrite = "/roomid " + roomId + ":" + data + '\n';
-                    client->write(messageToWrite.toUtf8());
-                    messageLogger("Sent", client, messageToWrite);
-
-                    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                        messageToWrite = "Server: " + userName + " has joined.\n";
-                        clientInRoom->write(messageToWrite.toUtf8());
-                    }
-                }
-
-                if (!users.contains(roomId)) {
-                    users.insert(roomId, userMap());
-                } else {
-                    bool isUserNameFree = false;
-
-                    while (!isUserNameFree) {
-                        isUserNameFree = true;
-
-                        foreach (const auto& clientUserName, users[roomId]) {
-                            if (clientUserName == userName) {
-                                isUserNameFree = false;
-                                userName += "-1";
-
-                                qDebug() << "Duplicate username" << clientUserName << ", changing to"
-                                         << userName;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                QString tmpRoomPath = "/tmp/wsted/" + roomId + "/";
-                QDir dir(tmpRoomPath);
-
-                qDebug().nospace() << "Created directory " << tmpRoomPath << ": "
-                                   << dir.mkpath(tmpRoomPath);
-
-                users[roomId][client] = userName;
-
-                messageToWrite = "/userid " + roomId + ':' + userName + '\n';
-                client->write(messageToWrite.toUtf8());
-                messageLogger("Sent", userName, messageToWrite);
-
-                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                    messageToWrite = "Server: " + userName + " has joined.\n";
-                    clientInRoom->write(messageToWrite.toUtf8());
-                }
-
-                sendUserList(roomId);
-                sendFileList(roomId, client);
+                processJoinRoom(data, roomId, client);
             } else if (command == "msg") {
-                // New text message from client
+                // Text message from client
+                sendTextMessage(users[roomId][client], roomId, data);
 
                 messageLogger("Received TEXT", client, line);
-
-                userName = users[roomId][client];
-
-                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                    messageToWrite = userName + ":" + data + '\n';
-                    clientInRoom->write(messageToWrite.toUtf8());
-                }
             }
         } else if (fileRegex.indexIn(line) != -1) {
-            // New file from client
+            // File from client
 
             command = fileRegex.cap(1);
             filename = fileRegex.cap(2);
             roomId = fileRegex.cap(3);
             data = fileRegex.cap(4);
 
-            QString tmpRoomPath = "/tmp/wsted/" + roomId + "/";
-
             if (command == "sendfile" && !filename.isEmpty() && !data.isEmpty()) {
+                // Client is uploading file
+                receiveFile(users[roomId][client], filename, roomId, data);
+
                 messageLogger("Received FILE", client,
                               '/' + command + " '" + filename + "' " + roomId + ":_BASE64_DATA_");
-
-                QDir dir;
-                if (!dir.mkpath(tmpRoomPath)) {
-                    qDebug() << "Failed to create path" << tmpRoomPath;
-                    return;
-                }
-
-                QFile file(tmpRoomPath + filename);
-
-                while (file.exists()) {
-                    qDebug() << "Duplicate filename" << filename;
-
-                    auto idx = filename.lastIndexOf('.');
-                    if (idx != -1) {
-                        filename = filename.mid(0, idx) + "-1" + filename.mid(idx);
-                    } else {
-                        filename = filename + "-1";
-                    }
-
-                    file.setFileName(tmpRoomPath + filename);
-
-                    qDebug() << "Changing to" << filename;
-                }
-
-                if (!file.open(QIODevice::WriteOnly, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
-                    qDebug() << file.fileName() << file.errorString();
-                    return;
-                }
-
-                file.write(QByteArray::fromBase64(data.toUtf8()));
-                file.close();
-
-                messageLogger("Received FILE", client, filename);
-                files[roomId].insert(filename);
-
-                userName = users[roomId][client];
-
-                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                    messageToWrite = "Server: " + userName + " has uploaded file '" + filename + "'.\n";
-                    clientInRoom->write(messageToWrite.toUtf8());
-                }
-
-                sendFileList(roomId);
             } else if (command == "getfile" && !filename.isEmpty()) {
+                // Client is downloading file
                 messageLogger("Received REQUEST", client, line);
 
-                QFile file(tmpRoomPath + filename);
-                if (!file.open(QIODevice::ReadOnly)) {
-                    qDebug() << file.fileName() << file.errorString();
-                    return;
-                }
-
-                messageToWrite =
-                    "/sendfile '" + filename + "' " + roomId + ":" + file.readAll().toBase64() + '\n';
-
-                client->write(messageToWrite.toUtf8());
-                messageLogger("Sent FILE", client,
-                              messageToWrite.mid(0, messageToWrite.indexOf(':') + 1) + "_BASE64_DATA_");
-
-                userName = users[roomId][client];
-
-                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-                    messageToWrite =
-                        "Server: " + userName + " has downloaded file '" + filename + "'.\n";
-                    clientInRoom->write(messageToWrite.toUtf8());
-                }
+                sendFile(users[roomId][client], filename, roomId, client);
             }
         } else {
             messageLogger("Received BAD", client, line);
@@ -248,8 +127,6 @@ void Server::readyRead() {
 }
 
 void Server::disconnected() {
-    LOG_CALL();
-
     QTcpSocket* client = (QTcpSocket*) sender();
     QString messageToWrite;
 
@@ -297,8 +174,6 @@ void Server::disconnected() {
 }
 
 void Server::sendUserList(roomId roomId) {
-    LOG_CALL();
-
     QStringList userList;
     QString message;
 
@@ -314,8 +189,6 @@ void Server::sendUserList(roomId roomId) {
 }
 
 void Server::sendFileList(roomId roomId, QTcpSocket* client) {
-    LOG_CALL();
-
     QStringList fileList;
     QString message;
 
@@ -332,4 +205,132 @@ void Server::sendFileList(roomId roomId, QTcpSocket* client) {
             clientInRoom->write(message.toUtf8());
         }
     }
+}
+
+void Server::receiveFile(const QString& userName, QString& filename, const QString& roomId,
+                         const QString& base64_data) {
+    QString messageToWrite;
+    QString tmpRoomPath;
+
+    tmpRoomPath = "/tmp/wsted/" + roomId + "/";
+
+    QDir dir;
+    if (!dir.mkpath(tmpRoomPath)) {
+        qDebug() << "Failed to create path" << tmpRoomPath;
+        return;
+    }
+
+    QFile file(tmpRoomPath + filename);
+
+    while (file.exists()) {
+        qDebug() << "Duplicate filename" << filename;
+
+        auto idx = filename.lastIndexOf('.');
+        if (idx != -1) {
+            filename = filename.mid(0, idx) + "-1" + filename.mid(idx);
+        } else {
+            filename = filename + "-1";
+        }
+
+        file.setFileName(tmpRoomPath + filename);
+
+        qDebug() << "Changing to" << filename;
+    }
+
+    if (!file.open(QIODevice::WriteOnly, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+        qDebug() << file.fileName() << file.errorString();
+        return;
+    }
+
+    file.write(QByteArray::fromBase64(base64_data.toUtf8()));
+    file.close();
+
+    files[roomId].insert(filename);
+
+    messageToWrite = "Server: " + userName + " has uploaded file '" + filename + "'.\n";
+
+    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+        clientInRoom->write(messageToWrite.toUtf8());
+    }
+
+    sendFileList(roomId);
+}
+
+void Server::sendFile(const QString& userName, const QString& filename, const QString& roomId,
+                      QTcpSocket* client) {
+    QString messageToWrite;
+
+    QFile file("/tmp/wsted/" + roomId + "/" + filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << file.fileName() << file.errorString();
+        return;
+    }
+
+    messageToWrite = "/sendfile '" + filename + "' " + roomId + ":" + file.readAll().toBase64() + '\n';
+
+    client->write(messageToWrite.toUtf8());
+    messageLogger("Sent FILE", client,
+                  messageToWrite.mid(0, messageToWrite.indexOf(':') + 1) + "_BASE64_DATA_");
+
+    messageToWrite = "Server: " + userName + " has downloaded file '" + filename + "'.\n";
+
+    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+        clientInRoom->write(messageToWrite.toUtf8());
+    }
+}
+
+void Server::processJoinRoom(QString& userName, QString& roomId, QTcpSocket* client) {
+    QString messageToWrite;
+
+    if (roomId == "new") {
+        roomId = generateNewRoomId();
+
+        messageToWrite = "/roomid " + roomId + ":" + userName + '\n';
+        client->write(messageToWrite.toUtf8());
+        messageLogger("Sent", client, messageToWrite);
+
+        for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+            messageToWrite = "Server: " + userName + " has joined.\n";
+            clientInRoom->write(messageToWrite.toUtf8());
+        }
+    }
+
+    if (!users.contains(roomId)) {
+        users.insert(roomId, userMap());
+    } else {
+        bool isUserNameFree = false;
+
+        while (!isUserNameFree) {
+            isUserNameFree = true;
+
+            foreach (const auto& clientUserName, users[roomId]) {
+                if (clientUserName == userName) {
+                    isUserNameFree = false;
+                    userName += "-1";
+
+                    qDebug() << "Duplicate username" << clientUserName << ", changing to" << userName;
+                    break;
+                }
+            }
+        }
+    }
+
+    QString tmpRoomPath = "/tmp/wsted/" + roomId + "/";
+    QDir dir(tmpRoomPath);
+
+    qDebug().nospace() << "Created directory " << tmpRoomPath << ": " << dir.mkpath(tmpRoomPath);
+
+    users[roomId][client] = userName;
+
+    messageToWrite = "/userid " + roomId + ':' + userName + '\n';
+    client->write(messageToWrite.toUtf8());
+    messageLogger("Sent", userName, messageToWrite);
+
+    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+        messageToWrite = "Server: " + userName + " has joined.\n";
+        clientInRoom->write(messageToWrite.toUtf8());
+    }
+
+    sendUserList(roomId);
+    sendFileList(roomId, client);
 }

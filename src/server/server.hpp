@@ -17,9 +17,22 @@ class Server : public QTcpServer {
 
    private:
     void incomingConnection(qintptr fd);
-    void sendUserList(roomId roomId);
-    void sendFileList(roomId roomId, QTcpSocket* client = nullptr);
 
+    // Messages
+    void sendTextMessage(const QString& userName, const QString& roomId, const QString& msg);
+
+    // Users
+    void sendUserList(roomId roomId);
+
+    // Files
+    void sendFileList(roomId roomId, QTcpSocket* client = nullptr);
+    void receiveFile(const QString& userName, QString& filename, const QString& roomId,
+                     const QString& base64_data);
+    void sendFile(const QString& userName, const QString& filename, const QString& roomId,
+                  QTcpSocket* client);
+
+    // Rooms
+    void processJoinRoom(QString& userName, QString& roomId, QTcpSocket* client);
     QString generateNewRoomId();
 
     QSet<QTcpSocket*> clients;
