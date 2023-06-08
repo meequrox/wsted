@@ -24,7 +24,7 @@ class Server : public QTcpServer {
 
     QSet<QTcpSocket*> clients;
     QMap<roomId, userMap> users;
-    QSet<QString> files;
+    QMap<roomId, QSet<QString>> files;
 
    public slots:
     void readyRead();

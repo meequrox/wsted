@@ -207,7 +207,7 @@ void Server::readyRead() {
                 file.close();
 
                 messageLogger("Received FILE", client, filename);
-                files.insert(filename);
+                files[roomId].insert(filename);
 
                 userName = users[roomId][client];
 
@@ -253,6 +253,7 @@ void Server::disconnected() {
 
         if (users[fromRoomId].size() == 0) {
             users.remove(fromRoomId);
+            files.remove(fromRoomId);
 
             QString tmpRoomPath = "/tmp/wsted/" + fromRoomId + "/";
             QDir dir(tmpRoomPath);
@@ -295,7 +296,7 @@ void Server::sendFileList(roomId roomId, QTcpSocket* client) {
     QStringList fileList;
     QString message;
 
-    foreach (const auto& fileName, files) {
+    foreach (const auto& fileName, files[roomId]) {
         fileList.append(fileName);
     }
 
