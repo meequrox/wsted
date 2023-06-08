@@ -5,14 +5,10 @@
 #include <QMessageBox>
 #include <QScreen>
 
-#define LOG_CALL() qDebug().nospace() << __PRETTY_FUNCTION__ << " call"
-
 typedef QRegularExpression QRegExp;
 typedef QRegularExpressionValidator QRegExpValidator;
 
 static QSize getDefaultWindowSize() {
-    LOG_CALL();
-
     const QSize screenSize = QApplication::primaryScreen()->size();
     const qreal screenRatio = QApplication::primaryScreen()->devicePixelRatio();
 
@@ -24,16 +20,20 @@ static QSize getDefaultWindowSize() {
 }
 
 LoginWindow::LoginWindow(QWidget* parent) : QWidget(parent) {
-    LOG_CALL();
-
+    // Menubar
     m_actionAbout = new QAction(this);
     m_menuHelp = new QMenu(this);
     m_menubar = new QMenuBar(this);
+
+    // Servers
     m_comboBoxServers = new QComboBox(this);
+
+    // Connect
     m_lineUserName = new QLineEdit(this);
     m_lineRoomId = new QLineEdit(this);
     m_pushButtonConnect = new QPushButton(this);
 
+    // Next windows
     m_widgetRoom = new RoomWindow(nullptr);
 
     this->setFixedSize(getDefaultWindowSize());
@@ -51,8 +51,6 @@ static void increaseCurrentObjectAY(QRect& obj, int extraGap = 0) {
 }
 
 void LoginWindow::ui_setupGeometry() {
-    LOG_CALL();
-
     QRect currentObjectSize;
 
     this->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
@@ -85,8 +83,6 @@ void LoginWindow::ui_setupGeometry() {
 }
 
 void LoginWindow::ui_loadContents() {
-    LOG_CALL();
-
     this->setWindowTitle("wsted");
     this->setWindowIcon(QIcon(":/icons/app"));
 
@@ -140,8 +136,6 @@ void LoginWindow::ui_loadContents() {
 }
 
 void LoginWindow::actionAbout_triggered() {
-    LOG_CALL();
-
     QString text(
         "wsted allows users to quickly and easily share files within a room, as well as chat in real "
         "time");
@@ -149,8 +143,6 @@ void LoginWindow::actionAbout_triggered() {
 }
 
 void LoginWindow::pushButtonConnect_clicked() {
-    LOG_CALL();
-
     QString messageBoxText;
 
     if (m_lineUserName->text().isEmpty()) {
@@ -181,13 +173,15 @@ void LoginWindow::pushButtonConnect_clicked() {
 }
 
 LoginWindow::~LoginWindow() {
-    LOG_CALL();
-
+    // Menubar
     m_actionAbout->deleteLater();
     m_menuHelp->deleteLater();
     m_menubar->deleteLater();
+
+    // Servers
     m_comboBoxServers->deleteLater();
 
+    // Connect
     delete m_lineUserName->validator();
     m_lineUserName->deleteLater();
 
@@ -195,5 +189,7 @@ LoginWindow::~LoginWindow() {
     m_lineRoomId->deleteLater();
 
     m_pushButtonConnect->deleteLater();
+
+    // Next windows
     m_widgetRoom->deleteLater();
 }
