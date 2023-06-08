@@ -247,7 +247,7 @@ void RoomWindow::pushButtonSendFile_clicked() {
         return;
     }
 
-    fileName = "'" + filePath.mid(filePath.lastIndexOf('/') + 1) + "'";
+    fileName = "'" + filePath.mid(filePath.lastIndexOf('/') + 1).replace('\'', '_') + "'";
     messageToWrite = "/sendfile " + fileName + ' ' + m_roomId + ':' + file.readAll().toBase64() + '\n';
 
     m_clientSocket->write(messageToWrite.toUtf8());
