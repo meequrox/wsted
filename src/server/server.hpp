@@ -17,7 +17,8 @@ class Server : public QTcpServer {
 
    private:
     void incomingConnection(qintptr fd);
-    void sendUserList(roomId);
+    void sendUserList(roomId roomId);
+    void sendFileList(roomId roomId, QTcpSocket* client = nullptr);
 
     QString generateNewRoomId();
 

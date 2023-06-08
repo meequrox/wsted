@@ -148,6 +148,7 @@ void Server::readyRead() {
                 }
 
                 sendUserList(roomId);
+                sendFileList(roomId, client);
             } else if (command == "message") {
                 // New text message from client
 
@@ -215,7 +216,7 @@ void Server::readyRead() {
                     clientInRoom->write(messageToWrite.toUtf8());
                 }
 
-                // TODO: sendFileList()
+                sendFileList(roomId);
             }
         } else {
             messageLogger("Received BAD", client, line);
@@ -271,7 +272,7 @@ void Server::disconnected() {
     }
 }
 
-void Server::sendUserList(QString roomId) {
+void Server::sendUserList(roomId roomId) {
     LOG_CALL();
 
     QStringList userList;
@@ -288,19 +289,23 @@ void Server::sendUserList(QString roomId) {
     }
 }
 
-// void Server::sendFileList(QString roomId) {
-//     LOG_CALL();
+void Server::sendFileList(roomId roomId, QTcpSocket* client) {
+    LOG_CALL();
 
-//    QStringList fileList;
-//    QString message;
+    QStringList fileList;
+    QString message;
 
-//    foreach (const auto& fileName, users[roomId].values()) {
-//        userList.append(userName);
-//    }
+    foreach (const auto& fileName, files) {
+        fileList.append(fileName);
+    }
 
-//    message = "/users " + roomId + ":" + userList.join(',') + '\n';
+    message = "/files " + roomId + ":" + fileList.join('/') + '\n';
 
-//    for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-//        clientInRoom->write(message.toUtf8());
-//    }
-//}
+    if (client) {
+        client->write(message.toUtf8());
+    } else {
+        for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+            clientInRoom->write(message.toUtf8());
+        }
+    }
+}
