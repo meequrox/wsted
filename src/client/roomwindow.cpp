@@ -27,6 +27,7 @@ static QSize getDefaultWindowSize() {
 RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconnected(false) {
     LOG_CALL();
 
+    m_actionDownload = new QAction(this);
     m_textMessages = new QTextEdit(this);
     m_lineMessage = new QLineEdit(this);
     m_listUsers = new QListWidget(this);
@@ -79,7 +80,11 @@ void RoomWindow::ui_loadContents() {
     this->setWindowTitle("Connecting...");
     this->setWindowIcon(QIcon(":/icons/app"));
 
-    m_textMessages->setStyleSheet("color:white;border:0px;border-radius:1px");
+    m_actionDownload->setText("Download");
+    this->connect(m_actionDownload, SIGNAL(triggered()), SLOT(actionDownload_triggered()));
+
+    m_textMessages->setStyleSheet(
+        "color:white;border:0px;border-left:1px solid white;border-radius:1px");
     m_textMessages->setReadOnly(true);
     m_textMessages->setText("");
 
@@ -91,12 +96,14 @@ void RoomWindow::ui_loadContents() {
     m_lineMessage->setPlaceholderText("Type here");
 
     m_listUsers->setStyleSheet(
-        "color:white;border:0px;border-left:1px solid white;border-bottom:1px solid "
+        "color:white;border:0px;border-left:1px solid white;border-right:1px solid "
         "white;border-radius:1px");
     m_listUsers->clear();
 
-    m_listFiles->setStyleSheet(m_listUsers->styleSheet());
+    m_listFiles->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_listFiles->clear();
+    m_listFiles->setContextMenuPolicy(Qt::ActionsContextMenu);
+    m_listFiles->insertAction(nullptr, m_actionDownload);
 
     m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_pushButtonSendMessage->setText("Say");
@@ -113,6 +120,21 @@ void RoomWindow::ui_loadContents() {
     this->connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
     this->connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
     this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
+}
+
+void RoomWindow::actionDownload_triggered() {
+    QString fileName;
+    QString message;
+
+    fileName = m_listFiles->currentItem()->text();
+
+    if (!fileName.isEmpty()) {
+        message = "/getfile '" + fileName + "' " + m_roomId + ":." + '\n';
+
+        m_clientSocket->write(message.toUtf8());
+
+        messageLogger("Sent", m_clientSocket, message);
+    }
 }
 
 void RoomWindow::pushButtonSendMessage_clicked() {
@@ -187,6 +209,7 @@ void RoomWindow::pushButtonDisconnect_clicked() {
     m_textMessages->clear();
     m_lineMessage->clear();
     m_listUsers->clear();
+    m_listFiles->clear();
 
     emit closed();
     this->close();
@@ -195,13 +218,16 @@ void RoomWindow::pushButtonDisconnect_clicked() {
 void RoomWindow::readyRead() {
     LOG_CALL();
 
-    QString line;
     QString userName;
+    QString line;
     QString message;
 
-    /* /command room:data */
-    QRegExp regex("^/([a-z]+) ([a-zA-Z0-9]+):(.*)$");
+    QRegExp messageRegex("^/([a-z]+) ([a-zA-Z0-9]+):(.*)$");  // /command room:data
     QString command;
+
+    QRegExp fileRegex("^/([a-z]+) '(.*)' ([a-zA-Z0-9]+):(.*)$");  // /command filename room:data
+    QString filename;
+
     QString roomId;
     QString data;
 
@@ -209,10 +235,12 @@ void RoomWindow::readyRead() {
         line = QString::fromUtf8(m_clientSocket->readLine().trimmed());
         messageLogger("Received", m_clientSocket, line);
 
-        if (regex.indexIn(line) != -1) {
-            command = regex.cap(1);
-            roomId = regex.cap(2);
-            data = regex.cap(3);
+        if (messageRegex.indexIn(line) != -1) {
+            // Message from server
+
+            command = messageRegex.cap(1);
+            roomId = messageRegex.cap(2);
+            data = messageRegex.cap(3);
 
             if (command == "roomid") {
                 this->setRoomId(roomId);
@@ -232,8 +260,53 @@ void RoomWindow::readyRead() {
                 for (const auto& fileName : fileList) {
                     m_listFiles->addItem(fileName);
                 }
-            } else {
-                qDebug("^ Bad message\n");
+            }
+        } else if (fileRegex.indexIn(line) != -1) {
+            // File from server
+
+            command = fileRegex.cap(1);
+            filename = fileRegex.cap(2);
+            roomId = fileRegex.cap(3);
+            data = fileRegex.cap(4);
+
+            if (command == "sendfile" && !filename.isEmpty() && !data.isEmpty()) {
+                messageLogger("Received FILE", m_clientSocket,
+                              '/' + command + " '" + filename + "' " + roomId + ":_BASE64_DATA_");
+
+                QString downloadRoomPath = QString(getenv("HOME")) + "/Downloads/" + roomId + "/";
+
+                QDir dir;
+                if (!dir.mkpath(downloadRoomPath)) {
+                    qDebug() << "Failed to create path" << downloadRoomPath;
+                    return;
+                }
+
+                QFile file(downloadRoomPath + filename);
+
+                while (file.exists()) {
+                    qDebug() << "Duplicate filename" << filename;
+
+                    auto idx = filename.lastIndexOf('.');
+                    if (idx != -1) {
+                        filename = filename.mid(0, idx) + "-1" + filename.mid(idx);
+                    } else {
+                        filename = filename + "-1";
+                    }
+
+                    file.setFileName(downloadRoomPath + filename);
+
+                    qDebug() << "Changing to" << filename;
+                }
+
+                if (!file.open(QIODevice::Append, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+                    qDebug() << file.fileName() << file.errorString();
+                    return;
+                }
+
+                file.write(QByteArray::fromBase64(data.toUtf8()));
+                file.close();
+
+                messageLogger("Received FILE", m_clientSocket, filename);
             }
         } else if (line.contains(':')) {
             auto idx = line.indexOf(':');
@@ -241,6 +314,8 @@ void RoomWindow::readyRead() {
             message = line.mid(idx + 1);
 
             m_textMessages->append("<b>" + userName + "</b>: " + message);
+        } else {
+            qDebug("^ Bad message\n");
         }
     }
 }
@@ -340,6 +415,7 @@ void RoomWindow::updateWindowTitle() {
 RoomWindow::~RoomWindow() {
     LOG_CALL();
 
+    m_actionDownload->deleteLater();
     m_textMessages->deleteLater();
     m_lineMessage->deleteLater();
     m_listUsers->deleteLater();

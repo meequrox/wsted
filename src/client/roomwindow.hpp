@@ -37,6 +37,7 @@ class RoomWindow : public QWidget {
     QString m_roomId;
     QString m_serverAddress;
 
+    QAction* m_actionDownload;
     QTextEdit* m_textMessages;
     QLineEdit* m_lineMessage;
     QListWidget* m_listUsers;
@@ -49,6 +50,7 @@ class RoomWindow : public QWidget {
     bool m_clientSocketDisconnected;
 
    public slots:
+    void actionDownload_triggered();
     void pushButtonSendMessage_clicked();
     void pushButtonSendFile_clicked();
     void pushButtonDisconnect_clicked();
