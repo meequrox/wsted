@@ -169,11 +169,11 @@ void Server::readyRead() {
             roomId = fileRegex.cap(3);
             data = fileRegex.cap(4);
 
+            QString tmpRoomPath = "/tmp/wsted/" + roomId + "/";
+
             if (command == "sendfile" && !filename.isEmpty() && !data.isEmpty()) {
                 messageLogger("Received FILE", client,
                               '/' + command + " '" + filename + "' " + roomId + ":_BASE64_DATA_");
-
-                QString tmpRoomPath = "/tmp/wsted/" + roomId + "/";
 
                 QDir dir;
                 if (!dir.mkpath(tmpRoomPath)) {
@@ -198,7 +198,7 @@ void Server::readyRead() {
                     qDebug() << "Changing to" << filename;
                 }
 
-                if (!file.open(QIODevice::Append, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+                if (!file.open(QIODevice::WriteOnly, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
                     qDebug() << file.fileName() << file.errorString();
                     return;
                 }
@@ -217,6 +217,29 @@ void Server::readyRead() {
                 }
 
                 sendFileList(roomId);
+            } else if (command == "getfile" && !filename.isEmpty()) {
+                messageLogger("Received REQUEST", client, line);
+
+                QFile file(tmpRoomPath + filename);
+                if (!file.open(QIODevice::ReadOnly)) {
+                    qDebug() << file.fileName() << file.errorString();
+                    return;
+                }
+
+                messageToWrite =
+                    "/sendfile '" + filename + "' " + roomId + ":" + file.readAll().toBase64() + '\n';
+
+                client->write(messageToWrite.toUtf8());
+                messageLogger("Sent FILE", client,
+                              messageToWrite.mid(0, messageToWrite.indexOf(':') + 1) + "_BASE64_DATA_");
+
+                userName = users[roomId][client];
+
+                for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
+                    messageToWrite =
+                        "Server: " + userName + " has downloaded file '" + filename + "'.\n";
+                    clientInRoom->write(messageToWrite.toUtf8());
+                }
             }
         } else {
             messageLogger("Received BAD", client, line);
