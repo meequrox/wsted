@@ -30,6 +30,7 @@ RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconn
     m_textMessages = new QTextEdit(this);
     m_lineMessage = new QLineEdit(this);
     m_listUsers = new QListWidget(this);
+    m_listFiles = new QListWidget(this);
     m_pushButtonSendMessage = new QPushButton(this);
     m_pushButtonSendFile = new QPushButton(this);
     m_pushButtonDisconnect = new QPushButton(this);
@@ -58,9 +59,6 @@ void RoomWindow::ui_setupGeometry() {
     m_lineMessage->setGeometry(
         QRect(0, m_textMessages->height(), size().width() * 2 / 3, size().height() * 0.07));
 
-    m_listUsers->setGeometry(
-        QRect(m_textMessages->width(), 0, m_textMessages->width(), m_textMessages->height()));
-
     m_pushButtonSendMessage->setGeometry(QRect(m_lineMessage->width(), m_textMessages->height(),
                                                size().width() * 0.25 / 3, size().height() * 0.07));
     m_pushButtonDisconnect->setGeometry(QRect(m_textMessages->width(), m_pushButtonSendMessage->y(),
@@ -68,6 +66,11 @@ void RoomWindow::ui_setupGeometry() {
     m_pushButtonSendFile->setGeometry(QRect(
         m_pushButtonDisconnect->x(), m_pushButtonDisconnect->y() - m_pushButtonDisconnect->height() - 1,
         m_pushButtonDisconnect->width(), m_pushButtonDisconnect->height()));
+
+    m_listUsers->setGeometry(
+        QRect(m_textMessages->width(), 0, size().width() * 0.25, m_textMessages->height() * 0.50));
+    m_listFiles->setGeometry(QRect(m_textMessages->width(), m_listUsers->height(), m_listUsers->width(),
+                                   m_listUsers->height() - m_pushButtonSendFile->height() - 2));
 }
 
 void RoomWindow::ui_loadContents() {
@@ -87,8 +90,13 @@ void RoomWindow::ui_loadContents() {
     m_lineMessage->setMaxLength(2048 - 8 - 10 - 3);
     m_lineMessage->setPlaceholderText("Type here");
 
-    m_listUsers->setStyleSheet("color:white;border:0px;border-left:1px solid white;border-radius:1px");
+    m_listUsers->setStyleSheet(
+        "color:white;border:0px;border-left:1px solid white;border-bottom:1px solid "
+        "white;border-radius:1px");
     m_listUsers->clear();
+
+    m_listFiles->setStyleSheet(m_listUsers->styleSheet());
+    m_listFiles->clear();
 
     m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_pushButtonSendMessage->setText("Say");
@@ -210,15 +218,22 @@ void RoomWindow::readyRead() {
                 this->setRoomId(roomId);
             } else if (command == "userid") {
                 this->setUserName(data);
-            } else if (command == "users" && roomId == this->m_roomId) {
+            } else if (command == "users" && roomId == m_roomId) {
                 QStringList userList = data.split(',');
 
                 m_listUsers->clear();
                 for (const auto& user : userList) {
                     m_listUsers->addItem(user);
                 }
+            } else if (command == "files" && roomId == m_roomId) {
+                QStringList fileList = data.split('/');
+
+                m_listFiles->clear();
+                for (const auto& fileName : fileList) {
+                    m_listFiles->addItem(fileName);
+                }
             } else {
-                messageLogger("Bad", "server", line);
+                qDebug("^ Bad message\n");
             }
         } else if (line.contains(':')) {
             auto idx = line.indexOf(':');
@@ -328,6 +343,7 @@ RoomWindow::~RoomWindow() {
     m_textMessages->deleteLater();
     m_lineMessage->deleteLater();
     m_listUsers->deleteLater();
+    m_listFiles->deleteLater();
     m_pushButtonSendMessage->deleteLater();
     m_pushButtonSendFile->deleteLater();
     m_pushButtonDisconnect->deleteLater();

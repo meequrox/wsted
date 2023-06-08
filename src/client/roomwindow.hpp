@@ -40,7 +40,7 @@ class RoomWindow : public QWidget {
     QTextEdit* m_textMessages;
     QLineEdit* m_lineMessage;
     QListWidget* m_listUsers;
-    // TODO: QListWidget* m_listFiles;
+    QListWidget* m_listFiles;
     QPushButton* m_pushButtonSendMessage;
     QPushButton* m_pushButtonSendFile;
     QPushButton* m_pushButtonDisconnect;
