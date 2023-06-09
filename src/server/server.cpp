@@ -12,7 +12,7 @@
 Server::Server(int _port, QObject* parent) : QTcpServer(parent) {
     QHostAddress address = QHostAddress::Any;
 
-    if (this->listen(address, _port) == false) {
+    if (listen(address, _port) == false) {
         qDebug() << "Could not listen at address" << address.toString() << "on port" << _port;
         exit(EXIT_FAILURE);
     }
@@ -30,8 +30,8 @@ void Server::incomingConnection(qintptr socketDescriptor) {
     QTcpSocket* client = new QTcpSocket(this);
     client->setSocketDescriptor(socketDescriptor);
 
-    this->connect(client, SIGNAL(readyRead()), this, SLOT(readyRead()));
-    this->connect(client, SIGNAL(disconnected()), this, SLOT(disconnected()));
+    connect(client, SIGNAL(readyRead()), this, SLOT(readyRead()));
+    connect(client, SIGNAL(disconnected()), this, SLOT(disconnected()));
 
     clients.insert(client);
 

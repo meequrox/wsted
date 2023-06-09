@@ -39,21 +39,21 @@ RoomWindow::RoomWindow(QWidget* parent) : QWidget(parent), m_clientSocketDisconn
     // Disconnect
     m_pushButtonDisconnect = new QPushButton(this);
 
-    this->setMinimumSize(480, 320);
-    this->resize(getDefaultWindowSize());
+    setMinimumSize(480, 320);
+    resize(getDefaultWindowSize());
 
     ui_setupGeometry();
     ui_loadContents();
 
     m_clientSocket = new QTcpSocket();
-    this->connect(m_clientSocket, SIGNAL(readyRead()), this, SLOT(readyRead()));
-    this->connect(m_clientSocket, SIGNAL(connected()), this, SLOT(connected()));
-    this->connect(m_clientSocket, SIGNAL(disconnected()), this, SLOT(pushButtonDisconnect_clicked()));
+    connect(m_clientSocket, SIGNAL(readyRead()), this, SLOT(readyRead()));
+    connect(m_clientSocket, SIGNAL(connected()), this, SLOT(connected()));
+    connect(m_clientSocket, SIGNAL(disconnected()), this, SLOT(pushButtonDisconnect_clicked()));
 }
 
 void RoomWindow::ui_setupGeometry() {
     // Window
-    this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
+    setWindowFlag(Qt::WindowFullscreenButtonHint, false);
     qDebug() << "Window" << size();
 
     // Messages
@@ -81,8 +81,8 @@ void RoomWindow::ui_setupGeometry() {
 
 void RoomWindow::ui_loadContents() {
     // Window
-    this->setWindowTitle("Connecting...");
-    this->setWindowIcon(QIcon(":/icons/app"));
+    setWindowTitle("Connecting...");
+    setWindowIcon(QIcon(":/icons/app"));
 
     // Messages
     m_textMessages->setStyleSheet(
@@ -96,12 +96,12 @@ void RoomWindow::ui_loadContents() {
     m_lineMessage->setText("");
     m_lineMessage->setMaxLength(2048 - 8 - 10 - 3);
     m_lineMessage->setPlaceholderText("Type here");
-    this->connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSendMessage_clicked()));
+    connect(m_lineMessage, SIGNAL(returnPressed()), SLOT(pushButtonSendMessage_clicked()));
 
     m_pushButtonSendMessage->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
     m_pushButtonSendMessage->setText("Say");
     m_pushButtonSendMessage->setDefault(true);
-    this->connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
+    connect(m_pushButtonSendMessage, SIGNAL(clicked()), SLOT(pushButtonSendMessage_clicked()));
 
     // Users
     m_listUsers->setStyleSheet(
@@ -116,16 +116,16 @@ void RoomWindow::ui_loadContents() {
     m_listFiles->insertAction(nullptr, m_actionDownload);
 
     m_actionDownload->setText("Download");
-    this->connect(m_actionDownload, SIGNAL(triggered()), SLOT(actionDownload_triggered()));
+    connect(m_actionDownload, SIGNAL(triggered()), SLOT(actionDownload_triggered()));
 
     m_pushButtonSendFile->setStyleSheet(m_pushButtonSendMessage->styleSheet());
     m_pushButtonSendFile->setText("Upload file");
-    this->connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
+    connect(m_pushButtonSendFile, SIGNAL(clicked()), SLOT(pushButtonSendFile_clicked()));
 
     // Disconnect
     m_pushButtonDisconnect->setStyleSheet(m_pushButtonSendMessage->styleSheet());
     m_pushButtonDisconnect->setText("Disconnect");
-    this->connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
+    connect(m_pushButtonDisconnect, SIGNAL(clicked()), SLOT(pushButtonDisconnect_clicked()));
 }
 
 void RoomWindow::receiveTextMessage(const QString& msg) {
@@ -276,7 +276,7 @@ void RoomWindow::pushButtonDisconnect_clicked() {
     m_listFiles->clear();
 
     emit closed();
-    this->close();
+    close();
 }
 
 void RoomWindow::readyRead() {
@@ -430,7 +430,7 @@ void RoomWindow::setRoomId(const QString& str) {
 }
 
 void RoomWindow::updateWindowTitle() {
-    this->setWindowTitle(m_userName + '@' + m_roomId + " | " + m_serverAddress);
+    setWindowTitle(m_userName + '@' + m_roomId + " | " + m_serverAddress);
 }
 
 RoomWindow::~RoomWindow() {

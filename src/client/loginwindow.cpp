@@ -36,7 +36,7 @@ LoginWindow::LoginWindow(QWidget* parent) : QWidget(parent) {
     // Next windows
     m_widgetRoom = new RoomWindow(nullptr);
 
-    this->setFixedSize(getDefaultWindowSize());
+    setFixedSize(getDefaultWindowSize());
 
     ui_setupGeometry();
     ui_loadContents();
@@ -53,14 +53,14 @@ static void increaseCurrentObjectAY(QRect& obj, int extraGap = 0) {
 void LoginWindow::ui_setupGeometry() {
     QRect currentObjectSize;
 
-    this->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
-    this->setWindowFlag(Qt::WindowFullscreenButtonHint, false);
+    setWindowFlag(Qt::WindowMaximizeButtonHint, false);
+    setWindowFlag(Qt::WindowFullscreenButtonHint, false);
 
     qDebug() << "Window" << size();
 
     // Menubar
     m_menuHelp->addAction(m_actionAbout);
-    m_menubar->setGeometry(QRect(0, 0, this->geometry().width(), 25));
+    m_menubar->setGeometry(QRect(0, 0, geometry().width(), 25));
     m_menubar->addAction(m_menuHelp->menuAction());
 
     currentObjectSize = QRect(size().width() / 4, 35, size().width() / 2, 40);
@@ -83,13 +83,13 @@ void LoginWindow::ui_setupGeometry() {
 }
 
 void LoginWindow::ui_loadContents() {
-    this->setWindowTitle("wsted");
-    this->setWindowIcon(QIcon(":/icons/app"));
+    setWindowTitle("wsted");
+    setWindowIcon(QIcon(":/icons/app"));
 
     // Menubar
     m_menuHelp->setTitle("Help");
     m_actionAbout->setText("About");
-    this->connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
+    connect(m_actionAbout, SIGNAL(triggered()), SLOT(actionAbout_triggered()));
 
     // Servers
     m_comboBoxServers->setStyleSheet("color:white;border:1px solid white;border-radius:1px");
@@ -131,11 +131,11 @@ void LoginWindow::ui_loadContents() {
     m_pushButtonConnect->setStyleSheet(m_lineUserName->styleSheet());
     m_pushButtonConnect->setText("Connect");
     m_pushButtonConnect->setDefault(true);
-    this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
+    connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
 
     // Next windows
-    this->connect(m_widgetRoom, SIGNAL(opened()), this, SLOT(hide()));
-    this->connect(m_widgetRoom, SIGNAL(closed()), this, SLOT(show()));
+    connect(m_widgetRoom, SIGNAL(opened()), this, SLOT(hide()));
+    connect(m_widgetRoom, SIGNAL(closed()), this, SLOT(show()));
 }
 
 void LoginWindow::actionAbout_triggered() {
