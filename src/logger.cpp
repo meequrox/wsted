@@ -3,12 +3,12 @@
 void messageLogger(const QString& action, const QString& clientName, const QString& msg) {
     QString actionLower;
     QString borderString;
-    QDateTime dateTime;
+    QTime time;
     QString where;
 
     actionLower = action.toLower();
     borderString = QString(8, '-');
-    dateTime = QDateTime().currentDateTime();
+    time = QDateTime().currentDateTime().time();
 
     if (actionLower.startsWith("sent")) {
         where = "to";
@@ -18,7 +18,7 @@ void messageLogger(const QString& action, const QString& clientName, const QStri
         where = "?";
     }
 
-    qDebug().noquote().nospace() << borderString << dateTime.time().toString() << borderString;
+    qDebug().noquote().nospace() << borderString << time.toString() << borderString;
     qDebug().noquote().nospace() << action << " message " << where + ' ' << clientName << ":\n'"
                                  << msg.trimmed() << "'";
     qDebug().noquote().nospace() << borderString << borderString << borderString << Qt::endl;
