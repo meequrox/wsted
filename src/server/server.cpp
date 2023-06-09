@@ -39,7 +39,13 @@ void Server::incomingConnection(qintptr socketDescriptor) {
 }
 
 void Server::sendTextMessage(const QString& userName, const QString& roomId, const QString& msg) {
-    QString messageToWrite = userName + ":" + msg + '\n';
+    QString timeString;
+    QString messageToWrite;
+
+    timeString = QDateTime().currentDateTime().time().toString();
+    timeString = timeString.mid(0, timeString.lastIndexOf(':'));
+
+    messageToWrite = timeString + ' ' + userName + ":" + msg + '\n';
 
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
         clientInRoom->write(messageToWrite.toUtf8());
@@ -127,11 +133,15 @@ void Server::readyRead() {
 }
 
 void Server::disconnected() {
-    QTcpSocket* client = (QTcpSocket*) sender();
+    QTcpSocket* client;
+    QString userName;
+    QString fromRoomId;
     QString messageToWrite;
+    QString timeString;
 
-    QString userName("unknown");
-    QString fromRoomId("unknown?");
+    client = (QTcpSocket*) sender();
+    userName = "unknown";
+    fromRoomId = "unknown?";
 
     for (auto [roomId, usersInRoom] : users.asKeyValueRange()) {
         if (usersInRoom.contains(client)) {
@@ -161,8 +171,11 @@ void Server::disconnected() {
             qDebug().nospace() << "Removed directory " << tmpRoomPath << ": " << dir.removeRecursively();
             qDebug() << "Deleted room" << fromRoomId << "(no more users in room)" << '\n';
         } else {
+            timeString = QDateTime().currentDateTime().time().toString();
+            timeString = timeString.mid(0, timeString.lastIndexOf(':'));
+
             for (const auto [clientInRoom, clientUserName] : users[fromRoomId].asKeyValueRange()) {
-                messageToWrite = "Server: " + userName + " has left.\n";
+                messageToWrite = timeString + " Server: " + userName + " has left.\n";
                 clientInRoom->write(messageToWrite.toUtf8());
             }
 
@@ -211,6 +224,7 @@ void Server::receiveFile(const QString& userName, QString& filename, const QStri
                          const QString& base64_data) {
     QString messageToWrite;
     QString tmpRoomPath;
+    QString timeString;
 
     tmpRoomPath = "/tmp/wsted/" + roomId + "/";
 
@@ -247,7 +261,10 @@ void Server::receiveFile(const QString& userName, QString& filename, const QStri
 
     files[roomId].insert(filename);
 
-    messageToWrite = "Server: " + userName + " has uploaded file '" + filename + "'.\n";
+    timeString = QDateTime().currentDateTime().time().toString();
+    timeString = timeString.mid(0, timeString.lastIndexOf(':'));
+
+    messageToWrite = timeString + " Server: " + userName + " has uploaded file '" + filename + "'.\n";
 
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
         clientInRoom->write(messageToWrite.toUtf8());
@@ -259,6 +276,7 @@ void Server::receiveFile(const QString& userName, QString& filename, const QStri
 void Server::sendFile(const QString& userName, const QString& filename, const QString& roomId,
                       QTcpSocket* client) {
     QString messageToWrite;
+    QString timeString;
 
     QFile file("/tmp/wsted/" + roomId + "/" + filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -272,7 +290,10 @@ void Server::sendFile(const QString& userName, const QString& filename, const QS
     messageLogger("Sent FILE", client,
                   messageToWrite.mid(0, messageToWrite.indexOf(':') + 1) + "_BASE64_DATA_");
 
-    messageToWrite = "Server: " + userName + " has downloaded file '" + filename + "'.\n";
+    timeString = QDateTime().currentDateTime().time().toString();
+    timeString = timeString.mid(0, timeString.lastIndexOf(':'));
+
+    messageToWrite = timeString + " Server: " + userName + " has downloaded file '" + filename + "'.\n";
 
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
         clientInRoom->write(messageToWrite.toUtf8());
@@ -281,6 +302,7 @@ void Server::sendFile(const QString& userName, const QString& filename, const QS
 
 void Server::processJoinRoom(QString& userName, QString& roomId, QTcpSocket* client) {
     QString messageToWrite;
+    QString timeString;
 
     if (roomId == "new") {
         roomId = generateNewRoomId();
@@ -288,11 +310,6 @@ void Server::processJoinRoom(QString& userName, QString& roomId, QTcpSocket* cli
         messageToWrite = "/roomid " + roomId + ":" + userName + '\n';
         client->write(messageToWrite.toUtf8());
         messageLogger("Sent", client, messageToWrite);
-
-        for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-            messageToWrite = "Server: " + userName + " has joined.\n";
-            clientInRoom->write(messageToWrite.toUtf8());
-        }
     }
 
     if (!users.contains(roomId)) {
@@ -326,8 +343,11 @@ void Server::processJoinRoom(QString& userName, QString& roomId, QTcpSocket* cli
     client->write(messageToWrite.toUtf8());
     messageLogger("Sent", userName, messageToWrite);
 
+    timeString = QDateTime().currentDateTime().time().toString();
+    timeString = timeString.mid(0, timeString.lastIndexOf(':'));
+
     for (const auto [clientInRoom, clientUserName] : users[roomId].asKeyValueRange()) {
-        messageToWrite = "Server: " + userName + " has joined.\n";
+        messageToWrite = timeString + " Server: " + userName + " has joined.\n";
         clientInRoom->write(messageToWrite.toUtf8());
     }
 
