@@ -131,12 +131,16 @@ void RoomWindow::ui_loadContents() {
 void RoomWindow::receiveTextMessage(const QString& msg) {
     QString userName;
     QString message;
+    QString timeString;
 
-    auto idx = msg.indexOf(':');
-    userName = msg.mid(0, idx);
-    message = msg.mid(idx + 1);
+    auto firstSpaceIdx = msg.indexOf(' ');
+    timeString = msg.mid(0, firstSpaceIdx);
 
-    m_textMessages->append("<b>" + userName + "</b>: " + message);
+    auto delimiterColonIdx = firstSpaceIdx + msg.mid(firstSpaceIdx).indexOf(':');
+    userName = msg.mid(firstSpaceIdx + 1, delimiterColonIdx - firstSpaceIdx - 1);
+    message = msg.mid(delimiterColonIdx + 1);
+
+    m_textMessages->append("<i>" + timeString + "</i> <b>" + userName + "</b>: " + message);
 }
 
 void RoomWindow::setUserList(const QString& separatedString) {
