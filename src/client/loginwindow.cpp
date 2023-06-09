@@ -117,6 +117,7 @@ void LoginWindow::ui_loadContents() {
     m_lineUserName->setMaxLength(16);
     m_lineUserName->setValidator(userNameValidator);
     m_lineUserName->setClearButtonEnabled(true);
+    connect(m_lineUserName, SIGNAL(returnPressed()), this, SLOT(pushButtonConnect_clicked()));
 
     m_lineRoomId->setStyleSheet(m_lineUserName->styleSheet());
     m_lineRoomId->setPlaceholderText("Room ID (can be blank)");
@@ -125,9 +126,11 @@ void LoginWindow::ui_loadContents() {
     m_lineRoomId->setMaxLength(10);
     m_lineRoomId->setValidator(roomIdValidator);
     m_lineRoomId->setClearButtonEnabled(true);
+    connect(m_lineRoomId, SIGNAL(returnPressed()), this, SLOT(pushButtonConnect_clicked()));
 
     m_pushButtonConnect->setStyleSheet(m_lineUserName->styleSheet());
     m_pushButtonConnect->setText("Connect");
+    m_pushButtonConnect->setDefault(true);
     this->connect(m_pushButtonConnect, SIGNAL(clicked()), SLOT(pushButtonConnect_clicked()));
 
     // Next windows
@@ -145,15 +148,13 @@ void LoginWindow::actionAbout_triggered() {
 void LoginWindow::pushButtonConnect_clicked() {
     QString messageBoxText;
 
-    if (m_lineUserName->text().isEmpty()) {
-        messageBoxText = QString("Empty username");
+    if (m_lineUserName->text().isEmpty() || m_lineUserName->text().toLower() == "server") {
+        messageBoxText = QString("Empty or forbidden username");
         qDebug() << messageBoxText;
 
         QMessageBox::warning(this, "Connect", messageBoxText, QMessageBox::Close, QMessageBox::Close);
         return;
     }
-
-    qDebug() << "\nSet username, room ID, server address for RoomWindow";
 
     m_widgetRoom->setUserName(m_lineUserName->text());
     m_widgetRoom->setRoomId(m_lineRoomId->text());
